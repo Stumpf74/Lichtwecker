@@ -12,9 +12,7 @@
 *.d
 *.o
 Arm/
-*.J�rgen
 *.txt
-*.Herrmann
 
 
 #ignore thumbnails created by windows
