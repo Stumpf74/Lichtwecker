@@ -1,0 +1,12 @@
+*.uvproj text merge=union eol=lf
+*.uvopt eol=lf
+*.uvmpw eol=lf
+*.ini eol=crlf
+*.cpp eol=crlf
+*.c eol=crlf
+*.h eol=crlf
+*.H eol=crlf
+*.sln eol=crlf
+*.vcproj eol=crlf
+*.sct eol=crlf
+*.s eol=crlf
