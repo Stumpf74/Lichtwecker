@@ -22,6 +22,19 @@ DEFINE_GRADIENT_PALETTE(sunrise_gp){
 class cLigthAlarmClock
 {
 public:
+   
+   class cAlarmTime
+   {
+      public:
+         cAlarmTime();
+         ~cAlarmTime();
+
+      private:
+         String m_strWeekDay;
+         uint8_t m_ucHour;
+         uint8_t m_ucMinute;
+   };
+   
    static cLigthAlarmClock *GetInstance();
    ~cLigthAlarmClock();
 
@@ -37,6 +50,9 @@ private:
    void SetLigthStartTime();
    void CalculateDelayTime();
    void CheckTimeIsExpired(time_t Time);
+   void CheckTimeStamp(time_t actTime);
+   void StartLigthSequenz();
+   void StartAlarmSequenz();
 
 private:
 
@@ -51,6 +67,9 @@ private:
 
    uint32_t m_uiLigthStepDelay;
    static const char m_daysOfTheWeek[7][3];
+
+   time_t m_tAlarmTime[4];
+   time_t m_tAlarmLigthTime[4];
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
@@ -126,6 +145,12 @@ void cLigthAlarmClock::Setup()
 {
    FastLED.addLeds<WS2812B, m_ucLED_PIN, RGB>(m_leds, m_ucNUM_LEDS).setCorrection(TypicalLEDStrip);
    LedsOff();
+
+   struct tm y2k = {0};
+   y2k.tm_hour = 19;   y2k.tm_min = 46; y2k.tm_sec = 0;
+   y2k.tm_year = 120; y2k.tm_mon = 0; y2k.tm_mday = 26;
+    m_tAlarmLigthTime[0] = mktime(&y2k);   
+
 }
 
 /**
@@ -137,6 +162,61 @@ void cLigthAlarmClock::Stop()
    LedsOff();
 }
 
+void cLigthAlarmClock::StartLigthSequenz()
+{
+
+}
+
+void cLigthAlarmClock::StartAlarmSequenz()
+{
+
+}
+/**
+ * @brief 
+ * 
+ * @param actTime 
+ */
+void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
+{
+   for (auto &&ligthtime : m_tAlarmLigthTime)
+   {
+      // DPRINT(m_daysOfTheWeek[dayOfWeek(ligthtime)]);DPRINT(", ");DPRINT(day(ligthtime));DPRINT(".");
+      // DPRINT(month(ligthtime));DPRINT(".");DPRINTLN(year(ligthtime));
+
+         // this is the rigth day
+      if( dayOfWeek(actTime) == dayOfWeek(ligthtime))
+         // this is the rigth hour
+         if( hour(actTime) == hour(ligthtime))
+         // this is the rigth hour
+            if( minute(actTime) == minute(ligthtime))
+               if(second(actTime) == 0)
+               {
+                  DPRINTLN("The Ligth goes on!");            
+                  DPRINT(m_daysOfTheWeek[dayOfWeek(actTime)]);DPRINT(", ");DPRINT(day(actTime));DPRINT(".");DPRINT(month(actTime));DPRINT(".");DPRINTLN(year(actTime));
+                  DPRINT("Time: "); DPRINT(hour(actTime)); DPRINT(":");DPRINT(minute(actTime));DPRINT(":");DPRINTLN(second(actTime));
+                  StartLigthSequenz();
+               }
+   }
+
+   for (auto &&alarmtime : m_tAlarmTime )
+   {
+         // this is the rigth day
+      if( dayOfWeek(actTime) == dayOfWeek(alarmtime))
+         // this is the rigth hour
+         if( hour(actTime) == hour(alarmtime))
+         // this is the rigth hour
+            if( minute(actTime) == minute(alarmtime))
+               if(second(actTime) == 0)
+               {
+                  DPRINTLN("Time to wake up!");            
+                  DPRINT(m_daysOfTheWeek[dayOfWeek(actTime)]);DPRINT(", ");DPRINT(day(actTime));DPRINT(".");DPRINT(month(actTime));DPRINT(".");DPRINTLN(year(actTime));
+                  DPRINT("Time: "); DPRINT(hour(actTime)); DPRINT(":");DPRINT(minute(actTime));DPRINT(":");DPRINTLN(second(actTime));
+                  StartAlarmSequenz();
+               }
+   }
+
+}
+
 /**
  * @brief 
  * 
@@ -144,8 +224,7 @@ void cLigthAlarmClock::Stop()
  */
 void cLigthAlarmClock::CheckTimeIsExpired(time_t actTime)
 {
-   DPRINT(m_daysOfTheWeek[dayOfWeek(actTime)]);DPRINT(", ");DPRINT(day(actTime));DPRINT(".");DPRINT(month(actTime));DPRINT(".");DPRINTLN(year(actTime));
-   DPRINT("Time: "); DPRINT(hour(actTime)); DPRINT(":");DPRINT(minute(actTime));DPRINT(":");DPRINTLN(second(actTime));
+   CheckTimeStamp(actTime);
 }
 
 /**

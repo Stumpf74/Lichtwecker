@@ -53,14 +53,12 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
    DPRINT("\tMsg: ");
    DPRINTLN(strMsg.c_str());
 
-   if (strstr((char *)p, "Smog"))
+   if (strstr((char *)p, "Set/ALARM"))
    {
-   }
-   else if (strstr((char *)p, "Pause"))
-   {
-   }
-   else if (strstr((char *)p, "Stop"))
-   {
+      if (strMsg.indexOf(",") != std::string::npos)
+      {
+         
+      }
    }
    else if (strTopic.indexOf("Set/RESET") != std::string::npos)
    {
