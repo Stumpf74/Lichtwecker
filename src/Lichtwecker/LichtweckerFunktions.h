@@ -14,34 +14,22 @@ DEFINE_GRADIENT_PALETTE(sunrise_gp){
 };
 
 
-
 /**
  * @brief class cLigthAlarmClock 
  * 
  */
 class cLigthAlarmClock
 {
-public:
+   public:
    
-   class cAlarmTime
-   {
-      public:
-         cAlarmTime();
-         ~cAlarmTime();
 
-      private:
-         String m_strWeekDay;
-         uint8_t m_ucHour;
-         uint8_t m_ucMinute;
-   };
-   
    static cLigthAlarmClock *GetInstance();
    ~cLigthAlarmClock();
 
    void Setup();
    void Stop();
    void Runtime(time_t actTime);
-   void SetWackupTime(const uint32_t ui);
+   void SetWackupTime( uint8_t ucAlarmNumber, const cAlarmTime & alarmtime);
 
 private:
    cLigthAlarmClock();
@@ -68,8 +56,9 @@ private:
    uint32_t m_uiLigthStepDelay;
    static const char m_daysOfTheWeek[7][3];
 
-   time_t m_tAlarmTime[4];
-   time_t m_tAlarmLigthTime[4];
+   static const uint8_t m_ucMaxAlarmTimer = 10;
+   cAlarmTime m_tAlarmTime[4];
+   cAlarmLigthTime m_tAlarmLigthTime[4];
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
@@ -77,10 +66,14 @@ const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "D
 /**
  * @brief 
  * 
- * @param ui 
+ * @param ucAlarmNumber 
+ * @param alarmtime 
  */
-void cLigthAlarmClock::SetWackupTime(const uint32_t ui)
+void cLigthAlarmClock::SetWackupTime( uint8_t ucAlarmNumber, const cAlarmTime & alarmtime)
 {
+   assert(ucAlarmNumber >= m_ucMaxAlarmTimer);
+
+
 
 }
 
@@ -146,10 +139,8 @@ void cLigthAlarmClock::Setup()
    FastLED.addLeds<WS2812B, m_ucLED_PIN, RGB>(m_leds, m_ucNUM_LEDS).setCorrection(TypicalLEDStrip);
    LedsOff();
 
-   struct tm y2k = {0};
-   y2k.tm_hour = 19;   y2k.tm_min = 46; y2k.tm_sec = 0;
-   y2k.tm_year = 120; y2k.tm_mon = 0; y2k.tm_mday = 26;
-    m_tAlarmLigthTime[0] = mktime(&y2k);   
+   
+   m_tAlarmLigthTime[0];   
 
 }
 
@@ -184,7 +175,7 @@ void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
       // DPRINT(month(ligthtime));DPRINT(".");DPRINTLN(year(ligthtime));
 
          // this is the rigth day
-      if( dayOfWeek(actTime) == dayOfWeek(ligthtime))
+      if( dayOfWeek(actTime) == ligthtime))
          // this is the rigth hour
          if( hour(actTime) == hour(ligthtime))
          // this is the rigth hour

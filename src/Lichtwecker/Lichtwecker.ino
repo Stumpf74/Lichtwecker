@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <Time.h>
 #include <TimeLib.h>
 #include <ESPmDNS.h>
@@ -10,6 +11,7 @@
 #include <EEPROM.h>
 
 #include "Debug.h"
+#include "AlarmTime.h"
 #include "Config.h"
 #include "Avarage.h"
 #include "Log.h"

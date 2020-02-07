@@ -1,7 +1,7 @@
 {
-    "board": "esp8266:esp8266:d1_mini",
-    "configuration": "CpuFrequency=80,UploadSpeed=115200,FlashSize=4M1M",
-    "port": "COM21",
-    "sketch": "WlanSchalter.ino",
+    "board": "esp32:esp32:esp32",
+    "configuration": "PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=115200,DebugLevel=none",
+    "port": "COM11",
+    "sketch": "Lichtwecker.ino",
     "output": "build"
 }
