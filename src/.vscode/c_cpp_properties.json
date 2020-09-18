@@ -16,12 +16,15 @@
         {
             "name": "Linux",
             "includePath": [
-                "/home/juergen/.arduino15/packages/esp32/hardware/esp32/1.0.2/libraries/ESPmDNS/src",
-                "/home/juergen/.arduino15/packages/esp32/hardware/esp32/1.0.2/libraries/ArduinoOTA/src"
-                "/home/juergen/.arduino15/packages/esp32/hardware/esp32/1.0.2/**",
-                "/home/juergen/.arduino15/packages/esp32/tools/**"
+                "/home/juergen/snap/arduino/current/.arduino15/packages/esp8266/hardware/esp8266/2.7.4/**",
+                "/home/juergen/snap/arduino/current/.arduino15/packages/esp8266/hardware/esp8266/2.7.4/libraries/**",
+                "/home/juergen/snap/arduino/41/.arduino15/**"
             ],
-            "forcedInclude": []
+            "forcedInclude": [],
+            "intelliSenseMode": "msvc-x64",
+            "compilerPath": "/home/juergen/snap/arduino/41/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
         }
     ],
     "version": 4

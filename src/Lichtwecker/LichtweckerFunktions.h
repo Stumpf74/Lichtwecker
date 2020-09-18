@@ -3,6 +3,8 @@
 
 #include <FastLED.h>
 #include "debug.h"
+#include <time.h>
+#include "AlarmTime.h"
 
 //#define UPDATES_PER_SECOND 100
 
@@ -41,6 +43,8 @@ private:
    void CheckTimeStamp(time_t actTime);
    void StartLigthSequenz();
    void StartAlarmSequenz();
+   int dayofweek(int day,int month,int year);
+
 
 private:
 
@@ -48,7 +52,7 @@ private:
 
    static cLigthAlarmClock *m_ptrInstance;
 
-   static const uint8_t m_ucLED_PIN = 23;
+   static const uint8_t m_ucLED_PIN = 4;
    static const uint8_t m_ucNUM_LEDS = 120;
    //#define BRIGHTNESS 50
    CRGB m_leds[m_ucNUM_LEDS];
@@ -57,8 +61,8 @@ private:
    static const char m_daysOfTheWeek[7][3];
 
    static const uint8_t m_ucMaxAlarmTimer = 10;
-   cAlarmTime m_tAlarmTime[4];
-   cAlarmLigthTime m_tAlarmLigthTime[4];
+   cAlarmTime m_tAlarmTime[m_ucMaxAlarmTimer];
+   cAlarmLigthTime m_tAlarmLigthTime[m_ucMaxAlarmTimer];
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
@@ -162,6 +166,8 @@ void cLigthAlarmClock::StartAlarmSequenz()
 {
 
 }
+
+
 /**
  * @brief 
  * 
@@ -169,41 +175,55 @@ void cLigthAlarmClock::StartAlarmSequenz()
  */
 void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
 {
-   for (auto &&ligthtime : m_tAlarmLigthTime)
+   tm *ts_time = localtime(&actTime);
+   
+   for( int i = 0; i < sizeof(m_tAlarmLigthTime); i++)
    {
       // DPRINT(m_daysOfTheWeek[dayOfWeek(ligthtime)]);DPRINT(", ");DPRINT(day(ligthtime));DPRINT(".");
       // DPRINT(month(ligthtime));DPRINT(".");DPRINTLN(year(ligthtime));
-
-         // this is the rigth day
-      if( dayOfWeek(actTime) == ligthtime))
-         // this is the rigth hour
-         if( hour(actTime) == hour(ligthtime))
-         // this is the rigth hour
-            if( minute(actTime) == minute(ligthtime))
-               if(second(actTime) == 0)
-               {
-                  DPRINTLN("The Ligth goes on!");            
-                  DPRINT(m_daysOfTheWeek[dayOfWeek(actTime)]);DPRINT(", ");DPRINT(day(actTime));DPRINT(".");DPRINT(month(actTime));DPRINT(".");DPRINTLN(year(actTime));
-                  DPRINT("Time: "); DPRINT(hour(actTime)); DPRINT(":");DPRINT(minute(actTime));DPRINT(":");DPRINTLN(second(actTime));
-                  StartLigthSequenz();
-               }
+      
+      if( m_tAlarmLigthTime[i].IsActive())
+      {
+            // this is the rigth day
+         for ( auto weekday = m_tAlarmLigthTime[i].GetWeekDays()->begin(); weekday != m_tAlarmLigthTime[i].GetWeekDays()->end(); ++weekday )
+         {
+            if( ts_time->tm_wday == *weekday)
+               // this is the rigth hour
+               if( ts_time->tm_hour == m_tAlarmLigthTime[i].GetHour())
+               // this is the rigth hour
+                  if( ts_time->tm_min == m_tAlarmLigthTime[i].GetMinute())
+                     if(ts_time->tm_sec == 0)
+                     {
+                        DPRINTLN("The Ligth goes on!");            
+                       // DPRINT(m_daysOfTheWeek[*ts_time->tm_wday]);DPRINT(", ");DPRINT(day(actTime));DPRINT(".");DPRINT(month(actTime));DPRINT(".");DPRINTLN(year(actTime));
+                       // DPRINT("Time: "); DPRINT(hour(actTime)); DPRINT(":");DPRINT(minute(actTime));DPRINT(":");DPRINTLN(second(actTime));
+                        StartLigthSequenz();
+                     }
+         }
+      }
    }
 
-   for (auto &&alarmtime : m_tAlarmTime )
+   for( int i = 0; i < sizeof(m_tAlarmLigthTime); i++)
    {
-         // this is the rigth day
-      if( dayOfWeek(actTime) == dayOfWeek(alarmtime))
-         // this is the rigth hour
-         if( hour(actTime) == hour(alarmtime))
-         // this is the rigth hour
-            if( minute(actTime) == minute(alarmtime))
-               if(second(actTime) == 0)
-               {
-                  DPRINTLN("Time to wake up!");            
-                  DPRINT(m_daysOfTheWeek[dayOfWeek(actTime)]);DPRINT(", ");DPRINT(day(actTime));DPRINT(".");DPRINT(month(actTime));DPRINT(".");DPRINTLN(year(actTime));
-                  DPRINT("Time: "); DPRINT(hour(actTime)); DPRINT(":");DPRINT(minute(actTime));DPRINT(":");DPRINTLN(second(actTime));
-                  StartAlarmSequenz();
-               }
+      if( m_tAlarmLigthTime[i].IsActive())
+      {
+            // this is the rigth day
+         for ( auto weekday = m_tAlarmLigthTime[i].GetWeekDays()->begin(); weekday != m_tAlarmLigthTime[i].GetWeekDays()->end(); ++weekday )
+         {
+            if( ts_time->tm_wday == *weekday)
+               // this is the rigth hour
+               if( ts_time->tm_hour == m_tAlarmLigthTime[i].GetHour())
+               // this is the rigth hour
+                  if( ts_time->tm_min == m_tAlarmLigthTime[i].GetMinute())
+                     if(ts_time->tm_sec == 0)
+                     {
+                        DPRINTLN("Time to wake up!");            
+                        //DPRINT(m_daysOfTheWeek[ts_time->tm_wday]);DPRINT(", ");DPRINT(day(actTime));DPRINT(".");DPRINT(month(actTime));DPRINT(".");DPRINTLN(year(actTime));
+                        //DPRINT("Time: "); DPRINT(hour(actTime)); DPRINT(":");DPRINT(minute(actTime));DPRINT(":");DPRINTLN(second(actTime));
+                        StartAlarmSequenz();
+                     }
+         }
+      }
    }
 
 }

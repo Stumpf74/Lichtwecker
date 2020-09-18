@@ -1,9 +1,9 @@
 #include <assert.h>
-#include <Time.h>
-#include <TimeLib.h>
-#include <ESPmDNS.h>
+#include <time.h>
+//#include <TimeLib.h>
+#include <ESP8266mDNS.h>
 #include <NTPClient.h>
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <WiFiUdp.h>
 #include <string.h>
@@ -146,7 +146,7 @@ bool setup_wifi()
    DPRINTLN(Config::GetInstance()->GetWifiSsid());
 
    WiFi.mode(WIFI_STA); // nur als client arbeiten
-   WiFi.setHostname(Config::GetInstance()->GetWifiHostname());
+   WiFi.hostname(Config::GetInstance()->GetWifiHostname());
    WiFi.begin(Config::GetInstance()->GetWifiSsid(), Config::GetInstance()->GetWifiSPassword());
    DPRINT("Set Hostname: ");
    DPRINTLN(Config::GetInstance()->GetWifiHostname());
@@ -304,6 +304,7 @@ void setup()
    delay(500);
    Serial.begin(115200);
    Config::GetInstance();
+   DPRINTLN("Starte Lichtwecker");
 
    InitIo();
 

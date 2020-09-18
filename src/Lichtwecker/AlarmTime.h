@@ -1,6 +1,9 @@
 #ifndef INC_ALARMTIME_H
 #define INC_ALARMTIME_H
 
+#include <vector>
+#include <array>
+
 
 /**
  * @brief 
@@ -12,18 +15,25 @@ class cAlarmTimeBase
       cAlarmTimeBase();
       ~cAlarmTimeBase();
 
-      void SetAlarmTime( size_t const sizeArrayWeekDays, int8_t * const arrayWeekDays, int8_t cAlarmHour, int8_t cAlarmMinute);
+      void SetAlarmTime( size_t const sizeArrayWeekDays, uint8_t * const arrayWeekDays, uint8_t cAlarmHour, uint8_t cAlarmMinute);
       void SetAlarmOn() {m_bfActive = true;};
       void SetAlarmOff() {m_bfActive = false;};
+      std::array<int8_t,7> * GetWeekDays() {return &m_cActiveWeekDays;};
+      uint8_t GetHour() { return m_cHour;};
+      uint8_t GetMinute() { return m_cMinute;};
+      bool IsActive() { return m_bfActive;};
 
    protected:
-      int8_t m_cActiveWeekDays[7];
-      int8_t m_cHour;
-      int8_t m_cMinute;
+      std::array<int8_t,7> m_cActiveWeekDays;
+      uint8_t m_cHour;
+      uint8_t m_cMinute;
       bool m_bfActive;
 
    private:
 };
+
+
+
 
 /**
  * @brief 
@@ -33,7 +43,7 @@ class cAlarmTimeBase
  * @param cAlarmHour 
  * @param cAlarmMinute 
  */
-void cAlarmTimeBase::SetAlarmTime( size_t const sizeArrayWeekDays, int8_t * const arrayWeekDays, int8_t cAlarmHour, int8_t cAlarmMinute)
+void cAlarmTimeBase::SetAlarmTime( size_t const sizeArrayWeekDays, uint8_t * const arrayWeekDays, uint8_t cAlarmHour, uint8_t cAlarmMinute)
 {
 
    for (size_t i  = 0; i < sizeArrayWeekDays; i++)
@@ -50,11 +60,11 @@ void cAlarmTimeBase::SetAlarmTime( size_t const sizeArrayWeekDays, int8_t * cons
  */
 cAlarmTimeBase::cAlarmTimeBase() : m_cHour(-1), m_cMinute(-1), m_bfActive(false)
 {
-   memset( m_cActiveWeekDays, -1, 7 );
+   m_cActiveWeekDays = {(int8_t)-1,(int8_t)-1,(int8_t)-1,(int8_t)-1,(int8_t)-1,(int8_t)-1,(int8_t)-1};
 }
 
 
-class cAlarmTime : cAlarmTimeBase
+class cAlarmTime : public cAlarmTimeBase
 {
    public:
       cAlarmTime();
@@ -63,7 +73,18 @@ class cAlarmTime : cAlarmTimeBase
    private:
 };
 
-class cAlarmLigthTime : cAlarmTimeBase
+
+cAlarmTime::cAlarmTime()
+{
+
+}
+
+cAlarmTime::~cAlarmTime()
+{
+   
+}
+
+class cAlarmLigthTime : public cAlarmTimeBase
 {
    public:
       cAlarmLigthTime();
@@ -71,6 +92,17 @@ class cAlarmLigthTime : cAlarmTimeBase
 
    private:
 };
+
+
+cAlarmLigthTime::cAlarmLigthTime()
+{
+
+}
+
+cAlarmLigthTime::~cAlarmLigthTime()
+{
+   
+}
 
 
 #endif // INC_ALARMTIME_H
