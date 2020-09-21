@@ -57,10 +57,7 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
 
    if (strstr((char *)p, "Set/ALARM"))
    {
-      if (strMsg.indexOf(",") != std::string::npos)
-      {
-         
-      }
+      cLigthAlarmClock::GetInstance()->ParseAlarms( strMsg );
    }
    else if (strTopic.indexOf("Set/RESET") != std::string::npos)
    {
@@ -83,7 +80,7 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
    }
    else if (strTopic.indexOf("Set/RGB") != std::string::npos)
    {
-      DPRINTLN("RGB Msg erhalten" + strMsg);
+      //DPRINTLN("RGB Msg erhalten" + strMsg);
       cLigthAlarmClock::GetInstance()->SetRgb(strMsg);
    }
    else if (strTopic.indexOf("Get") != std::string::npos)

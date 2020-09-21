@@ -5,8 +5,63 @@
 #include "debug.h"
 #include <time.h>
 #include "AlarmTime.h"
+#include <ArduinoJson.h>
 
 //#define UPDATES_PER_SECOND 100
+
+// Example json alarm timer
+// {
+//   "version" : 1,
+//   "timer" : [
+//     {
+//       "number" : 1,
+//       "weekday" : [1,2,3],
+//       "time" : "8:11",
+//       "active" : true
+//     },
+//     {
+//       "number" : 2,
+//       "weekday" : [1,2,3],
+//       "time" : "8:11",
+//       "active" : false
+//     },
+//     {
+//       "number" : 3,
+//       "weekday" : [1,2,3],
+//       "time" : "8:11",
+//       "active" : false
+//     },
+//     {
+//       "number" : 4,
+//       "weekday" : [1,2,3],
+//       "time" : "8:11",
+//       "active" : false
+//     },    
+//     {
+//       "number" : 5,
+//       "weekday" : [1,2,3],
+//       "time" : "8:11",
+//       "active" : false
+//     },   
+//     {
+//       "number" : 6,
+//       "weekday" : [1,2,3],
+//       "time" : "8:11",
+//       "active" : false
+//     },    
+//     {
+//       "number" : 7,
+//       "weekday" : [1,2,3],
+//       "time" : "8:11",
+//       "active" : false
+//     }    
+//  ]
+//  }
+
+
+
+
+
 
 DEFINE_GRADIENT_PALETTE(sunrise_gp){
       0, 0, 0, 0,        //schwarz
@@ -33,6 +88,8 @@ class cLigthAlarmClock
    void Runtime(time_t actTime);
    void SetWackupTime( uint8_t ucAlarmNumber, const cAlarmTime & alarmtime);
    void SetRgb(String strMsg);
+   void ParseAlarms( String strMsg );
+
 
 private:
    cLigthAlarmClock();
@@ -68,6 +125,43 @@ private:
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
+
+
+
+
+void cLigthAlarmClock::ParseAlarms( String strMsg )
+{
+   // Size of document with 7 timers
+   // 7*JSON_ARRAY_SIZE(3) + JSON_ARRAY_SIZE(7) + JSON_OBJECT_SIZE(2) + 7*JSON_OBJECT_SIZE(4)
+   // Additional bytes for strings duplication
+   // 76
+
+   // Platform	Size
+   // AVR
+   // 464+76 = 540
+   // ESP32
+   // ESP8266
+   // 928+76 = 1004     
+   StaticJsonDocument<2000> doc;      
+   deserializeJson(doc, json);
+   JsonArray timer_0_weekday = timer_0["timer"];
+   
+   JsonArray timer = doc["timer"];
+   JsonObject timer_0 = timer[0];
+
+
+   int timer_0_number = timer_0["number"]; // 1
+
+   JsonArray timer_0_weekday = timer_0["weekday"];
+   int timer_0_weekday_0 = timer_0_weekday[0]; // 1
+   int timer_0_weekday_1 = timer_0_weekday[1]; // 2
+   int timer_0_weekday_2 = timer_0_weekday[2]; // 3
+
+   const char* timer_0_time = timer_0["time"]; // "8:11"
+   bool timer_0_active = timer_0["active"]; // true
+
+
+}
 
 /**
  * @brief 
