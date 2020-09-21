@@ -1,7 +1,7 @@
 #ifndef INC_LICHTWECKER_H
 #define INC_LICHTWECKER_H
 
-#include <FastLED.h>
+#include "FastLED.h"
 #include "debug.h"
 #include <time.h>
 #include "AlarmTime.h"
@@ -53,7 +53,7 @@ private:
 
    static cLigthAlarmClock *m_ptrInstance;
 
-   static const uint8_t m_ucLED_PIN = 4;
+   static const uint8_t m_ucLED_PIN = 2; // --> D2
    static const uint8_t m_ucNUM_LEDS = 120;
    //#define BRIGHTNESS 50
    CRGB m_leds[m_ucNUM_LEDS];
@@ -64,6 +64,7 @@ private:
    static const uint8_t m_ucMaxAlarmTimer = 10;
    cAlarmTime m_tAlarmTime[m_ucMaxAlarmTimer];
    cAlarmLigthTime m_tAlarmLigthTime[m_ucMaxAlarmTimer];
+   bool m_IsSunriseStarted;
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
@@ -110,7 +111,7 @@ cLigthAlarmClock *cLigthAlarmClock::m_ptrInstance = nullptr;
  * @brief Construct a new c Ligth Alarm Clock::c Ligth Alarm Clock object
  * 
  */
-cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0)
+cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false)
 {
 }
 
@@ -141,7 +142,7 @@ cLigthAlarmClock *cLigthAlarmClock::GetInstance()
  */
 void cLigthAlarmClock::Setup()
 {
-   FastLED.addLeds<WS2812B, m_ucLED_PIN, RGB>(m_leds, m_ucNUM_LEDS).setCorrection(TypicalLEDStrip);
+   FastLED.addLeds<WS2812B, m_ucLED_PIN, GRB>(m_leds, m_ucNUM_LEDS).setCorrection(TypicalLEDStrip);
    LedsOff();
 
    
@@ -156,11 +157,12 @@ void cLigthAlarmClock::Setup()
 void cLigthAlarmClock::Stop()
 {
    LedsOff();
+   m_IsSunriseStarted = false;
 }
 
 void cLigthAlarmClock::StartLigthSequenz()
 {
-
+   m_IsSunriseStarted = true;
 }
 
 void cLigthAlarmClock::StartAlarmSequenz()
@@ -177,11 +179,12 @@ void cLigthAlarmClock::StartAlarmSequenz()
 void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
 {
    tm *ts_time = localtime(&actTime);
+      DPRINT(m_daysOfTheWeek[ts_time->tm_wday]);DPRINT(", ");DPRINT(ts_time->tm_mday);DPRINT(".\t\t");
+      DPRINT(ts_time->tm_hour);DPRINT(":");DPRINT(ts_time->tm_min);DPRINT(":");DPRINTLN(ts_time->tm_sec);
    
-   for( int i = 0; i < sizeof(m_tAlarmLigthTime); i++)
+   for( int i = 0; i < (sizeof(m_tAlarmLigthTime)/ sizeof(cAlarmLigthTime)); i++)
    {
-      // DPRINT(m_daysOfTheWeek[dayOfWeek(ligthtime)]);DPRINT(", ");DPRINT(day(ligthtime));DPRINT(".");
-      // DPRINT(month(ligthtime));DPRINT(".");DPRINTLN(year(ligthtime));
+      DPRINT("Check Alarm Ligth Time: ");DPRINTLN(i);
       
       if( m_tAlarmLigthTime[i].IsActive())
       {
@@ -237,6 +240,10 @@ void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
 void cLigthAlarmClock::CheckTimeIsExpired(time_t actTime)
 {
    CheckTimeStamp(actTime);
+
+   if( m_IsSunriseStarted )
+      Sunrise();
+
 }
 
 /**
@@ -260,7 +267,6 @@ void cLigthAlarmClock::Runtime(time_t actTime)
    {
       previousMillis1000ms = currentMillis;
       //DPRINT("actTime: "); DPRINTLN(String(actTime));
-      //Sunrise();
    }
 }
 
@@ -298,7 +304,11 @@ void cLigthAlarmClock::Sunrise()
 
 void cLigthAlarmClock::SetRgb(String strMsg)
 {
-   
+   uint32_t raw_color = std::strtoul(strMsg.c_str(), 0, 16);
+   DPRINTLN( "Raw: " + String(raw_color));
+   CRGB color(raw_color);   
+   fill_solid(m_leds, m_ucNUM_LEDS, color);
+   FastLED.show();
 }
 
 

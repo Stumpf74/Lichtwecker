@@ -27,7 +27,7 @@ PubSubClient client(mqtt_server, 1883, callbackMqtt, espClient);
 CAverage<int32_t> cRssiAvg(16, -65);
 bool bfSendStatus = false;
 WiFiUDP ntpUDP;
-const long utcOffsetInSeconds = 3600 * 1; // UTC+2
+const long utcOffsetInSeconds = 3600 * 2; // UTC+2
 NTPClient timeClientNTP(ntpUDP, "fritz.box", utcOffsetInSeconds, 3600);
 static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
 
@@ -83,7 +83,7 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
    }
    else if (strTopic.indexOf("Set/RGB") != std::string::npos)
    {
-      Log::Print("RGB Msg erhalten" + strMsg);
+      DPRINTLN("RGB Msg erhalten" + strMsg);
       cLigthAlarmClock::GetInstance()->SetRgb(strMsg);
    }
    else if (strTopic.indexOf("Get") != std::string::npos)
