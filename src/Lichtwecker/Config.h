@@ -9,7 +9,7 @@
 #define mqtt_server "haussteuerung"
 //#define mqtt_user "your_username"
 //#define mqtt_password "your_password"
-const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/Lichtwecker/Luefter"};
+const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/Lichtwecker"};
 const char *cpcSubScriberSet = {"Lichtwecker/Set/+"};
 const char *cpcSubScriberGet = {"Lichtwecker/Get"};
 
