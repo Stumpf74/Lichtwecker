@@ -81,6 +81,11 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
          Log::ActivateLogging(false);
       }
    }
+   else if (strTopic.indexOf("Set/RGB") != std::string::npos)
+   {
+      Log::Print("RGB Msg erhalten" + strMsg);
+      cLigthAlarmClock::GetInstance()->SetRgb(strMsg);
+   }
    else if (strTopic.indexOf("Get") != std::string::npos)
    {
       if (strMsg.indexOf("STATUS") != std::string::npos)
@@ -256,7 +261,7 @@ void InitArduinoOTA()
    // ArduinoOTA.setPort(8266);
 
    // Hostname defaults to esp8266-[ChipID]
-   ArduinoOTA.setHostname("Lichtwecker");
+   ArduinoOTA.setHostname(Config::GetInstance()->GetWifiHostname());
 
    // No authentication by default
    // ArduinoOTA.setPassword((const char *)"123");

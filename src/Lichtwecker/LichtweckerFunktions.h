@@ -32,6 +32,7 @@ class cLigthAlarmClock
    void Stop();
    void Runtime(time_t actTime);
    void SetWackupTime( uint8_t ucAlarmNumber, const cAlarmTime & alarmtime);
+   void SetRgb(String strMsg);
 
 private:
    cLigthAlarmClock();
@@ -294,5 +295,11 @@ void cLigthAlarmClock::Sunrise()
       heatIndex = 0;
    }
 }
+
+void cLigthAlarmClock::SetRgb(String strMsg)
+{
+   
+}
+
 
 #endif //INC_LICHTWECKER_H
