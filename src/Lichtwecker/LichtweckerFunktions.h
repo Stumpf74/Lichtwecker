@@ -71,10 +71,11 @@ DEFINE_GRADIENT_PALETTE(sunrise_gp){
 //    |      |       |      blue       
 //    |      |       |       |       
       0,      5,      3,     0,  //off -> black
+      25,   22,          19,      0,  //dunkles rot-gelb
       51,   176/4*1,    150/4*1,      0,  //dunkles rot-gelb
       102,  176/4*2,    176/4*2,     60,  //dunkles gelb
       153,  240/4*3,    240/4*3,    120, // gelb-weiß
-      255,  240/4*3,    240/4*3,    255  //sehr helles Blau
+      255,  240,    240,    255  //sehr helles Blau
 
       // 0,      0,      0,     0,  //off -> black
       // 128,  220,    110,     0,  //rot - gelb
@@ -135,17 +136,21 @@ private:
    CRGB m_leds[m_ucNUM_LEDS];
 
    uint32_t m_uiLigthStepDelay;
+   uint32_t m_uiSunriseTimeSpan;
+   uint32_t m_uiSunriseDelay;
+   uint32_t m_uiAlarmOffTime;
    static const char m_daysOfTheWeek[7][3];
 
    static const uint8_t m_ucMaxAlarmTimer = 10;
    cAlarmTime m_tAlarmTime[m_ucMaxAlarmTimer];
    cAlarmLigthTime m_tAlarmLigthTime[m_ucMaxAlarmTimer];
    bool m_IsSunriseStarted;
+   bool m_IsSunriseEnded;
    uint32_t m_uiSunriseIndex;
+   uint32_t m_uiAlarmOffCount;
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
-
 
 
 
@@ -207,7 +212,7 @@ void cLigthAlarmClock::SetLigthStartTime()
  */
 void cLigthAlarmClock::CalculateDelayTime()
 {
-
+   m_uiLigthStepDelay = m_uiSunriseTimeSpan / 256;
 }
 
 /**
@@ -220,9 +225,12 @@ cLigthAlarmClock *cLigthAlarmClock::m_ptrInstance = nullptr;
  * @brief Construct a new c Ligth Alarm Clock::c Ligth Alarm Clock object
  * 
  */
-cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false), m_uiSunriseIndex(0)
+cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false), m_uiSunriseIndex(0), m_uiSunriseTimeSpan(1800),m_uiSunriseDelay(0),
+   m_IsSunriseEnded(false), m_uiAlarmOffTime(900), m_uiAlarmOffCount(0)
 {
+   CalculateDelayTime();
 }
+
 
 /**
  * @brief Destroy the c Ligth Alarm Clock::c Ligth Alarm Clock object
@@ -267,11 +275,15 @@ void cLigthAlarmClock::Stop()
 {
    LedsOff();
    m_IsSunriseStarted = false;
+   m_IsSunriseEnded = false;
 }
 
 void cLigthAlarmClock::StartLigthSequenz()
 {
    m_IsSunriseStarted = true;
+   m_uiSunriseDelay = m_uiLigthStepDelay;
+   m_IsSunriseEnded = false;
+   m_uiAlarmOffCount = 0;
 }
 
 void cLigthAlarmClock::StartAlarmSequenz()
@@ -351,10 +363,28 @@ void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
 void cLigthAlarmClock::CheckTimeIsExpired(time_t actTime)
 {
    CheckTimeStamp(actTime);
-
    if( m_IsSunriseStarted )
-      Sunrise();
+   {  
+      if( m_uiSunriseDelay >= m_uiLigthStepDelay )
+      {      
+         Sunrise();
+         m_uiSunriseDelay = 0;
+      }
+      ++m_uiSunriseDelay;
+   }
 
+   if( m_IsSunriseEnded )
+   {
+      if( m_uiAlarmOffTime >= m_uiAlarmOffCount )
+      {         
+         LedsOff();
+         m_IsSunriseEnded = false;
+      }      
+      else
+      {
+         ++m_uiAlarmOffCount;
+      }
+   }
 }
 
 /**
@@ -373,12 +403,6 @@ void cLigthAlarmClock::Runtime(time_t actTime)
       CheckTimeIsExpired(actTime);
    }
 
-   // 1000ms Schleife
-   if (currentMillis - previousMillis1000ms >= 1000)
-   {
-      previousMillis1000ms = currentMillis;
-      //DPRINT("actTime: "); DPRINTLN(String(actTime));
-   }
 }
 
 /**
@@ -390,6 +414,7 @@ void cLigthAlarmClock::LedsOff()
    fill_solid(m_leds, m_ucNUM_LEDS, CRGB::Black);
    FastLED.show();
    m_uiSunriseIndex = 0;
+   m_IsSunriseEnded = false;
 }
 
 /**
@@ -410,6 +435,11 @@ void cLigthAlarmClock::Sunrise()
       FastLED.show();
       ++m_uiSunriseIndex;
    }
+   else
+   {
+      m_IsSunriseEnded = true;
+   }
+   
 }
 
 void cLigthAlarmClock::SetRgb(String strMsg)
