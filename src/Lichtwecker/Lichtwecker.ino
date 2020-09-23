@@ -90,7 +90,16 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
          bfSendStatus = true;
       }
    }
-
+   else if (strTopic.indexOf("alarm_clock_mqtt") != std::string::npos)
+   {
+      if( strTopic.indexOf("before_alarm") != std::string::npos )
+      {  
+         cLigthAlarmClock::GetInstance()->StartLigthSequenz();
+         DPRINTLN("Sunrise is started");
+      }   
+   }
+   
+   
    // Free the memory
    free(p);
 }
@@ -236,6 +245,10 @@ bool setup_mqtt()
          DPRINT("Setze Subscriber - ");
          DPRINTLN(cpcSubScriberGet);
          client.subscribe(cpcSubScriberGet);
+
+         DPRINT("Setze Subscriber - ");
+         DPRINTLN(cpcSubScriberAlarmClock);
+         client.subscribe(cpcSubScriberAlarmClock);
 
          DPRINT("Setze Subscriber - ");
          DPRINTLN(cpcSubScriberSetHomeProtokollServer);

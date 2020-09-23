@@ -12,6 +12,8 @@
 const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/Lichtwecker"};
 const char *cpcSubScriberSet = {"Lichtwecker/Set/+"};
 const char *cpcSubScriberGet = {"Lichtwecker/Get"};
+const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt/+"};
+
 
 
 /**
