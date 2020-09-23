@@ -64,11 +64,30 @@
 
 
 DEFINE_GRADIENT_PALETTE(sunrise_gp){
-      0, 0, 0, 0,        //schwarz
-      128, 100, 220, 0,  //rot - gelb
-      224, 240, 240, 0,  //gelb
-      255, 128, 128, 240 //sehr helles Blau
+//    Line number      
+//    |     red      
+//    |      |      green      
+//    |      |       |      
+//    |      |       |      blue       
+//    |      |       |       |       
+      0,      5,      3,     0,  //off -> black
+      51,   176/4*1,    150/4*1,      0,  //dunkles rot-gelb
+      102,  176/4*2,    176/4*2,     60,  //dunkles gelb
+      153,  240/4*3,    240/4*3,    120, // gelb-weiß
+      255,  240/4*3,    240/4*3,    255  //sehr helles Blau
+
+      // 0,      0,      0,     0,  //off -> black
+      // 128,  220,    110,     0,  //rot - gelb
+      // 224,  240,    240,     0,  //gelb
+      // 255,  128,    128,    240 //sehr helles Blau
+
 };
+
+
+CRGB crgb_RedYellow(0xB0,   0x8D,      0);  //rot - gelb
+CRGB crgb_Yellow(    240,    240,      0);  //gelb
+CRGB crgb_LigthBlue( 128,    128,    240); //sehr helles Blau
+
 
 
 /**
@@ -89,6 +108,7 @@ class cLigthAlarmClock
    void SetWackupTime( uint8_t ucAlarmNumber, const cAlarmTime & alarmtime);
    void SetRgb(String strMsg);
    void ParseAlarms( String strMsg );
+   void StartLigthSequenz();
 
 
 private:
@@ -99,7 +119,6 @@ private:
    void CalculateDelayTime();
    void CheckTimeIsExpired(time_t Time);
    void CheckTimeStamp(time_t actTime);
-   void StartLigthSequenz();
    void StartAlarmSequenz();
    int dayofweek(int day,int month,int year);
 
@@ -122,6 +141,7 @@ private:
    cAlarmTime m_tAlarmTime[m_ucMaxAlarmTimer];
    cAlarmLigthTime m_tAlarmLigthTime[m_ucMaxAlarmTimer];
    bool m_IsSunriseStarted;
+   uint32_t m_uiSunriseIndex;
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
@@ -142,24 +162,19 @@ void cLigthAlarmClock::ParseAlarms( String strMsg )
    // ESP32
    // ESP8266
    // 928+76 = 1004     
+   DPRINTLN( strMsg );
    StaticJsonDocument<2000> doc;      
-   deserializeJson(doc, json);
-   JsonArray timer_0_weekday = timer_0["timer"];
+   deserializeJson(doc, strMsg.c_str());
    
    JsonArray timer = doc["timer"];
    JsonObject timer_0 = timer[0];
-
-
    int timer_0_number = timer_0["number"]; // 1
-
    JsonArray timer_0_weekday = timer_0["weekday"];
    int timer_0_weekday_0 = timer_0_weekday[0]; // 1
    int timer_0_weekday_1 = timer_0_weekday[1]; // 2
    int timer_0_weekday_2 = timer_0_weekday[2]; // 3
-
    const char* timer_0_time = timer_0["time"]; // "8:11"
    bool timer_0_active = timer_0["active"]; // true
-
 
 }
 
@@ -205,7 +220,7 @@ cLigthAlarmClock *cLigthAlarmClock::m_ptrInstance = nullptr;
  * @brief Construct a new c Ligth Alarm Clock::c Ligth Alarm Clock object
  * 
  */
-cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false)
+cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false), m_uiSunriseIndex(0)
 {
 }
 
@@ -273,15 +288,17 @@ void cLigthAlarmClock::StartAlarmSequenz()
 void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
 {
    tm *ts_time = localtime(&actTime);
-      DPRINT(m_daysOfTheWeek[ts_time->tm_wday]);DPRINT(", ");DPRINT(ts_time->tm_mday);DPRINT(".\t\t");
-      DPRINT(ts_time->tm_hour);DPRINT(":");DPRINT(ts_time->tm_min);DPRINT(":");DPRINTLN(ts_time->tm_sec);
+      // DPRINT(m_daysOfTheWeek[ts_time->tm_wday]);DPRINT(", ");DPRINT(ts_time->tm_mday);DPRINT(".\t\t");
+      // DPRINT(ts_time->tm_hour);DPRINT(":");DPRINT(ts_time->tm_min);DPRINT(":");DPRINTLN(ts_time->tm_sec);
    
    for( int i = 0; i < (sizeof(m_tAlarmLigthTime)/ sizeof(cAlarmLigthTime)); i++)
    {
-      DPRINT("Check Alarm Ligth Time: ");DPRINTLN(i);
-      
       if( m_tAlarmLigthTime[i].IsActive())
       {
+         DPRINT(m_daysOfTheWeek[ts_time->tm_wday]);DPRINT(", ");DPRINT(ts_time->tm_mday);DPRINT(".\t\t");
+         DPRINT(ts_time->tm_hour);DPRINT(":");DPRINT(ts_time->tm_min);DPRINT(":");DPRINTLN(ts_time->tm_sec);
+         DPRINT("Check Alarm Ligth Time: ");DPRINTLN(i);
+
             // this is the rigth day
          for ( auto weekday = m_tAlarmLigthTime[i].GetWeekDays()->begin(); weekday != m_tAlarmLigthTime[i].GetWeekDays()->end(); ++weekday )
          {
@@ -372,6 +389,7 @@ void cLigthAlarmClock::LedsOff()
 {
    fill_solid(m_leds, m_ucNUM_LEDS, CRGB::Black);
    FastLED.show();
+   m_uiSunriseIndex = 0;
 }
 
 /**
@@ -380,19 +398,17 @@ void cLigthAlarmClock::LedsOff()
  */
 void cLigthAlarmClock::Sunrise()
 {
-   static uint16_t heatIndex = 0; // start out at 0
-   CRGB color = ColorFromPalette(m_sunrisePal, heatIndex);
-
-   // fill the entire strip with the current color
-   fill_solid(m_leds, m_ucNUM_LEDS, color);
-
-   FastLED.show();
-   //        FastLED.delay(250);
-
-   heatIndex++;
-   if (heatIndex >= 255)
+   if (m_uiSunriseIndex <= 255)
    {
-      heatIndex = 0;
+      CRGB color = ColorFromPalette(m_sunrisePal, m_uiSunriseIndex);
+      DPRINT("Count: "); DPRINT(m_uiSunriseIndex);
+      DPRINT(" Red: "); DPRINT(color.red);
+      DPRINT(" Green: "); DPRINT(color.green);
+      DPRINT(" Blue: "); DPRINTLN(color.blue);
+      // fill the entire strip with the current color
+      fill_solid(m_leds, m_ucNUM_LEDS, color);
+      FastLED.show();
+      ++m_uiSunriseIndex;
    }
 }
 
