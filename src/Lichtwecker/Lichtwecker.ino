@@ -97,6 +97,25 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
          cLigthAlarmClock::GetInstance()->StartLigthSequenz();
          DPRINTLN("Sunrise is started");
       }   
+      else if( strTopic.indexOf("start") != std::string::npos )
+      {  
+         //cLigthAlarmClock::GetInstance()->StartLigthSequenz();
+         DPRINTLN("start");
+      }   
+      else if( strTopic.indexOf("stop") != std::string::npos )
+      {  
+         cLigthAlarmClock::GetInstance()->Stop();
+         DPRINTLN("stop");
+      }   
+      else if( strTopic.indexOf("alarm") != std::string::npos )
+      {  
+         //cLigthAlarmClock::GetInstance()->StartLigthSequenz();
+         DPRINTLN("alarm");
+      }   
+      else
+      {
+         DPRINT("MQTT command undefined: ");DPRINTLN(strTopic);
+      }
    }
    
    
@@ -343,11 +362,9 @@ void setup()
  */
 void InitIo()
 {
-//   pinMode(iLedBlau, OUTPUT);
-//   pinMode(iLedGruen, OUTPUT);
-   // pinMode(iLedRot, OUTPUT);
-   // pinMode(iSmogSchalter, INPUT_PULLUP);
-   // pinMode(iPauseSchalter, INPUT_PULLUP);
+  pinMode(LED_BUILTIN, OUTPUT); // LED als Output definieren
+  //digitalWrite(LED_BUILTIN, HIGH); // Ausschalten   
+  digitalWrite(LED_BUILTIN, LOW); // Ausschalten   
 }
 
 /**

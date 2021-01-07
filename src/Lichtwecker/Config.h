@@ -59,7 +59,7 @@ class Config
       ~Config();
 
       const char* ptr_VersionName = {"Lichtwecker"};
-      const char* ptr_VersionNumber = {"0.1"};
+      const char* ptr_VersionNumber = {"0.2"};
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
       

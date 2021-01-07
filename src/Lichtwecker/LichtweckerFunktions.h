@@ -68,27 +68,15 @@ DEFINE_GRADIENT_PALETTE(sunrise_gp){
 //    |     red      
 //    |      |      green      
 //    |      |       |      
-//    |      |       |      blue       
-//    |      |       |       |       
-      0,      5,      3,     0,  //off -> black
-      25,   22,          19,      0,  //dunkles rot-gelb
-      51,   176/4*1,    150/4*1,      0,  //dunkles rot-gelb
-      102,  176/4*2,    176/4*2,     60,  //dunkles gelb
-      153,  240/4*3,    240/4*3,    120, // gelb-weiß
-      255,  240,    240,    255  //sehr helles Blau
-
-      // 0,      0,      0,     0,  //off -> black
-      // 128,  220,    110,     0,  //rot - gelb
-      // 224,  240,    240,     0,  //gelb
-      // 255,  128,    128,    240 //sehr helles Blau
-
+//    |      |       |        blue       
+//    |      |       |        |       
+      0,      5,      3,      0,  //off -> black
+      25,   22,      19,      0,  //dunkles rot-gelb
+      51,   176/4*1, 150/4*1, 0,  //dunkles rot-gelb
+      102,  176/4*2, 176/4*2, 60,  //dunkles gelb
+      153,  240/4*3, 240/4*3, 120, // gelb-weiß
+      255,  240,     240,     255  //sehr helles Blau
 };
-
-
-CRGB crgb_RedYellow(0xB0,   0x8D,      0);  //rot - gelb
-CRGB crgb_Yellow(    240,    240,      0);  //gelb
-CRGB crgb_LigthBlue( 128,    128,    240); //sehr helles Blau
-
 
 
 /**
@@ -226,7 +214,7 @@ cLigthAlarmClock *cLigthAlarmClock::m_ptrInstance = nullptr;
  * 
  */
 cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false), m_uiSunriseIndex(0), m_uiSunriseTimeSpan(1800),m_uiSunriseDelay(0),
-   m_IsSunriseEnded(false), m_uiAlarmOffTime(900), m_uiAlarmOffCount(0)
+   m_IsSunriseEnded(false), m_uiAlarmOffTime(1800), m_uiAlarmOffCount(0)
 {
    CalculateDelayTime();
 }
@@ -363,10 +351,11 @@ void cLigthAlarmClock::CheckTimeStamp(time_t actTime)
 void cLigthAlarmClock::CheckTimeIsExpired(time_t actTime)
 {
    CheckTimeStamp(actTime);
-   if( m_IsSunriseStarted )
+   if( m_IsSunriseStarted && m_IsSunriseEnded == false )
    {  
       if( m_uiSunriseDelay >= m_uiLigthStepDelay )
       {      
+         DPRINTLN("The sun is raising");
          Sunrise();
          m_uiSunriseDelay = 0;
       }
@@ -375,16 +364,23 @@ void cLigthAlarmClock::CheckTimeIsExpired(time_t actTime)
 
    if( m_IsSunriseEnded )
    {
-      if( m_uiAlarmOffTime >= m_uiAlarmOffCount )
+      DPRINT("The sunrais was ending: "); DPRINTLN(m_uiAlarmOffCount);
+      if( m_uiAlarmOffTime <= m_uiAlarmOffCount )
       {         
          LedsOff();
          m_IsSunriseEnded = false;
+         m_uiAlarmOffCount = 0;
       }      
       else
       {
          ++m_uiAlarmOffCount;
       }
    }
+   else
+   {
+      m_uiAlarmOffCount = 0;
+   }
+   
 }
 
 /**
@@ -438,6 +434,7 @@ void cLigthAlarmClock::Sunrise()
    else
    {
       m_IsSunriseEnded = true;
+      m_IsSunriseStarted = false;
    }
    
 }
