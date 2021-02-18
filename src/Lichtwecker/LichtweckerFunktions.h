@@ -98,6 +98,7 @@ class cLigthAlarmClock
    void SetRgb(String strMsg);
    void ParseAlarms( String strMsg );
    void StartLigthSequenz();
+   void RegisterRgbChangedCalback( void (*pFuncCallback)(CRGB));   
 
 
 private:
@@ -118,7 +119,7 @@ private:
 
    static cLigthAlarmClock *m_ptrInstance;
 
-   static const uint8_t m_ucLED_PIN = 2; // --> D2
+   static const uint8_t m_ucLED_PIN = 4; // --> D4
    static const uint8_t m_ucNUM_LEDS = 120;
    //#define BRIGHTNESS 50
    CRGB m_leds[m_ucNUM_LEDS];
@@ -136,6 +137,8 @@ private:
    bool m_IsSunriseEnded;
    uint32_t m_uiSunriseIndex;
    uint32_t m_uiAlarmOffCount;
+
+   void (*m_pFuncRgbCallback)(CRGB);
 };
 
 const char cLigthAlarmClock::m_daysOfTheWeek[7][3] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
@@ -214,7 +217,7 @@ cLigthAlarmClock *cLigthAlarmClock::m_ptrInstance = nullptr;
  * 
  */
 cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false), m_uiSunriseIndex(0), m_uiSunriseTimeSpan(1800),m_uiSunriseDelay(0),
-   m_IsSunriseEnded(false), m_uiAlarmOffTime(1800), m_uiAlarmOffCount(0)
+   m_IsSunriseEnded(false), m_uiAlarmOffTime(3600), m_uiAlarmOffCount(0), m_pFuncRgbCallback(NULL)
 {
    CalculateDelayTime();
 }
@@ -409,6 +412,8 @@ void cLigthAlarmClock::LedsOff()
 {
    fill_solid(m_leds, m_ucNUM_LEDS, CRGB::Black);
    FastLED.show();
+   if( m_pFuncRgbCallback != NULL )
+      (*m_pFuncRgbCallback)(CRGB::Black);
    m_uiSunriseIndex = 0;
    m_IsSunriseEnded = false;
 }
@@ -429,6 +434,8 @@ void cLigthAlarmClock::Sunrise()
       // fill the entire strip with the current color
       fill_solid(m_leds, m_ucNUM_LEDS, color);
       FastLED.show();
+      if( m_pFuncRgbCallback != NULL )
+         (*m_pFuncRgbCallback)(color);
       ++m_uiSunriseIndex;
    }
    else
@@ -446,7 +453,16 @@ void cLigthAlarmClock::SetRgb(String strMsg)
    CRGB color(raw_color);   
    fill_solid(m_leds, m_ucNUM_LEDS, color);
    FastLED.show();
+   if( m_pFuncRgbCallback != NULL )
+      (*m_pFuncRgbCallback)(color);
 }
+
+
+void cLigthAlarmClock::RegisterRgbChangedCalback( void (*pFuncCallback)(CRGB))
+{
+   m_pFuncRgbCallback = pFuncCallback;
+}   
+
 
 
 #endif //INC_LICHTWECKER_H

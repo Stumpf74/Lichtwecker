@@ -1,3 +1,4 @@
+
 #include <assert.h>
 #include <time.h>
 //#include <TimeLib.h>
@@ -9,7 +10,8 @@
 #include <string.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
-
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
 #include "Debug.h"
 #include "AlarmTime.h"
 #include "Config.h"
@@ -30,6 +32,11 @@ WiFiUDP ntpUDP;
 const long utcOffsetInSeconds = 3600 * 2; // UTC+2
 NTPClient timeClientNTP(ntpUDP, "fritz.box", utcOffsetInSeconds, 3600);
 static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
+
+#define BMP280_I2C_ADDRESS  0x76
+Adafruit_BME280 bmp; // use I2C interface
+//Adafruit_Sensor *bmp_temp = bmp.getTemperatureSensor();
+//Adafruit_Sensor *bmp_pressure = bmp.getPressureSensor();
 
 /**
  * @brief Callback from mqtt
@@ -329,6 +336,37 @@ void InitArduinoOTA()
 }
 
 
+String hexStr(unsigned char *data, int len)
+{
+   constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                              '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+   
+   DPRINT("hexStr: ");
+   DPRINT(data[0]);
+   DPRINT(data[1]);
+   DPRINTLN(data[2]);
+
+   String s(len * 2, ' ');
+   for (int i = 0; i < len; ++i) 
+   {
+      s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
+      s[2 * i + 1] = hexmap[data[i] & 0x0F];
+   }
+   DPRINT("Str: ");
+   DPRINTLN(s);
+   return s;
+}
+
+
+void PublishRgbValue( CRGB rgbcolor )
+{
+   String strRgbHex = hexStr((unsigned char *)rgbcolor.raw, 3);
+   client.publish("Lichtwecker/rgb", strRgbHex.c_str());
+}
+
+
+
 /**
  * @brief setup
  * 
@@ -354,6 +392,13 @@ void setup()
    InitArduinoOTA();
 
    cLigthAlarmClock::GetInstance()->Setup();
+   cLigthAlarmClock::GetInstance()->RegisterRgbChangedCalback(&PublishRgbValue);
+
+   //bmp.begin(BMP280_I2C_ADDRESS);
+   while (!bmp.begin(0x76)) {
+      Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
+      delay(500);
+   }
 }
 
 /**
@@ -524,6 +569,35 @@ void SendTimeStatus()
    client.publish("Lichtwecker/TIME", timestamp.c_str());
 }
 
+
+void ReadBME280Data()
+{
+   static float old_temp = 0;
+   static uint16_t old_press = 0;
+
+   float temp = bmp.readTemperature();
+   temp = round(temp*10) / 10;
+   
+   float pressure = (bmp.readPressure()/100); // /100 for hPA
+   //float altitude = bmp.readAltitude(1013.25);
+   uint16_t pressure_round = static_cast<uint16_t>(pressure+0.5);
+
+   if( old_temp != temp)
+   {
+      client.publish("Lichtwecker/TEMPERATUR", String(temp).c_str());
+      old_temp = temp;
+   }
+
+   if( old_press != pressure_round)
+   {
+      client.publish("Lichtwecker/LUFTDRUCK", String(pressure_round).c_str());
+      old_press = pressure_round;
+   }
+}
+ 
+ 
+ 
+
 /**
  * @brief main loop
  * 
@@ -568,6 +642,10 @@ void loop()
       }
 
       GetRssi();
+   
+      ReadBME280Data();
+ 
+   
    }
 
    // 15Min Schleife

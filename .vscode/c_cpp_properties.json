@@ -26,12 +26,10 @@
             "name": "Windows",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/2.5.0/**",
-                "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-3-20ed2b9/**",
+                "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/2.7.4/**",
+                "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-4-b40a506/**",
                 "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/**",
                 "C:/Users/juergen/Documents/Arduino/libraries/**"
-            
-            
             ],
             "defines": [
                 "_DEBUG",
@@ -42,18 +40,28 @@
                 "limitSymbolsToIncludedHeaders": false,
                 "path": [
                     "${workspaceFolder}/**",
-                    "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/2.5.0/**",
-                    "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-3-20ed2b9/**",
+                    "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/2.7.4/**",
+                    "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-4-b40a506/**",
                     "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/**",
                     "C:/Users/juergen/Documents/Arduino/libraries/**"
                 ]
             },
             "forcedInclude": [],
-            "compilerPath": "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc",
+            "compilerPath": "C:/Users/juergen/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-4-b40a506",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "gcc-x64"
         },
+        {
+            "name": "Win32",
+            "includePath": [
+                "C:\\Users\\juergen\\Documents\\Arduino\\libraries\\Adafruit_BMP280_Library"
+            ],
+            "forcedInclude": [],
+            "defines": [
+                "USBCON"
+            ]
+        }
     ],
     "version": 4
 }
