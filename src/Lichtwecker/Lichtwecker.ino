@@ -17,6 +17,7 @@
 #include "Config.h"
 #include "Avarage.h"
 #include "Log.h"
+#include "Avarage.h"
 #include "LichtweckerFunktions.h"
 
 // Callback function header
@@ -35,6 +36,8 @@ static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa
 
 #define BMP280_I2C_ADDRESS  0x76
 Adafruit_BME280 bmp; // use I2C interface
+CAverage<float> cAvgTemperature(16, 0.0);
+CAverage<uint16_t> cAvgPressure(16, 0);
 //Adafruit_Sensor *bmp_temp = bmp.getTemperatureSensor();
 //Adafruit_Sensor *bmp_pressure = bmp.getPressureSensor();
 
@@ -399,6 +402,8 @@ void setup()
       Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
       delay(500);
    }
+
+   ReadBME280Data(true);
 }
 
 /**
@@ -570,7 +575,7 @@ void SendTimeStatus()
 }
 
 
-void ReadBME280Data()
+void ReadBME280Data( bool bfInit )
 {
    static float old_temp = 0;
    static uint16_t old_press = 0;
@@ -582,16 +587,27 @@ void ReadBME280Data()
    //float altitude = bmp.readAltitude(1013.25);
    uint16_t pressure_round = static_cast<uint16_t>(pressure+0.5);
 
-   if( old_temp != temp)
+   if (bfInit)
    {
-      client.publish("Lichtwecker/TEMPERATUR", String(temp).c_str());
-      old_temp = temp;
+      cAvgTemperature.InitBuffer(temp);
+      cAvgPressure.InitBuffer(pressure_round);
+   }
+   else
+   {
+      cAvgTemperature.Add(temp);   
+      cAvgPressure.Add(pressure_round);
    }
 
-   if( old_press != pressure_round)
+   if( old_temp != cAvgTemperature.Get())
    {
-      client.publish("Lichtwecker/LUFTDRUCK", String(pressure_round).c_str());
-      old_press = pressure_round;
+      old_temp = cAvgTemperature.Get();
+      client.publish("Lichtwecker/TEMPERATUR", String(old_temp).c_str());
+   }
+
+   if( old_press != cAvgPressure.Get())
+   {
+      old_press = cAvgPressure.Get();
+      client.publish("Lichtwecker/LUFTDRUCK", String(old_press).c_str());
    }
 }
  
@@ -643,7 +659,7 @@ void loop()
 
       GetRssi();
    
-      ReadBME280Data();
+      ReadBME280Data(false);
  
    
    }
