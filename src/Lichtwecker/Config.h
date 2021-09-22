@@ -65,8 +65,8 @@ class Config
       
 
 
-      const char* ptr_wifi_ssid = {"MaxAlleinZuhaus"};
-      const char* ptr_wifi_password = {"$ImmerMalWiedereinNeuesPAsswort:0815"};
+      const char* ptr_wifi_ssid = {"MeinWlanSsid"};
+      const char* ptr_wifi_password = {"MeinWlanPW"};
       const char* ptr_wifi_hostname = {"Lichtwecker"};
 
       typedef struct tsConfig
