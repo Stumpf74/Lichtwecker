@@ -624,7 +624,9 @@ void loop()
    static uint32_t previousMillis10ms = 0;
    static uint32_t previousMillis1000ms = 0;
    static uint32_t next5Second = currentMillis + 2500;
-   static uint32_t next15Min = currentMillis + 15 * 60 * 1000; // alle 15 Min
+   static uint32_t next5Min = currentMillis + 5 * 60 * 1000; // alle 5 Min
+   static uint32_t next12HMin = currentMillis + 720 * 60 * 1000; // alle 12 Stunden
+   
 
    // 10ms Schleife
    if (currentMillis - previousMillis10ms >= 10)
@@ -651,26 +653,31 @@ void loop()
    if (currentMillis >= next5Second)
    {
       next5Second = currentMillis + 5000;
+      ReadBME280Data(false);
+   }
+
+   // 5Min Schleife
+   if (currentMillis >= next5Min)
+   {
+      next5Min = currentMillis + 5 * 60 * 1000; // alle 5 Min;
+      GetRssi();
 
       if (CheckWifiIsConnected())
       {
          CheckMqttClientIsConnected();
       }
 
-      GetRssi();
-   
-      ReadBME280Data(false);
- 
-   
+      bfSendStatus = true;
    }
 
-   // 15Min Schleife
-   if (currentMillis >= next15Min)
+   // 12hMin Schleife
+   if (currentMillis >= next12HMin)
    {
-      next15Min = currentMillis + 15 * 60 * 1000; // alle 15 Min;
+      next12HMin = currentMillis + 720 * 60 * 1000; // alle 15 Min;
       bfSendStatus = true;
       timeClientNTP.update();
    }
+
 
    client.loop();
    ArduinoOTA.handle();
