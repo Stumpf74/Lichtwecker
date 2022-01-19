@@ -149,7 +149,7 @@ void GetRssi()
    {
       rssi_old = rssi;
       String strVal = String(rssi);
-      client.publish("Lichtwecker/RSSI", strVal.c_str());
+      client.publish("Lichtwecker_Max/RSSI", strVal.c_str());
    }
 }
 
@@ -162,15 +162,15 @@ void GetWifiStatus()
    int32_t rssi = cRssiAvg.Get();
    String strVal = String(rssi);
 
-   client.publish("Lichtwecker/STATUS", "online");
-   client.publish("Lichtwecker/VERSION", Config::GetInstance()->GetVersionString());
-   client.publish("Lichtwecker/BUILD", Config::GetInstance()->GetBuildDate());
+   client.publish("Lichtwecker_Max/STATUS", "online");
+   client.publish("Lichtwecker_Max/VERSION", Config::GetInstance()->GetVersionString());
+   client.publish("Lichtwecker_Max/BUILD", Config::GetInstance()->GetBuildDate());
 
    IPAddress ip = WiFi.localIP();
-   client.publish("Lichtwecker/LOCALIP", ip.toString().c_str());
-   client.publish("Lichtwecker/HOSTNAME", Config::GetInstance()->GetWifiHostname());
-   client.publish("Lichtwecker/SSID", Config::GetInstance()->GetWifiSsid());
-   client.publish("Lichtwecker/RSSI", strVal.c_str());
+   client.publish("Lichtwecker_Max/LOCALIP", ip.toString().c_str());
+   client.publish("Lichtwecker_Max/HOSTNAME", Config::GetInstance()->GetWifiHostname());
+   client.publish("Lichtwecker_Max/SSID", Config::GetInstance()->GetWifiSsid());
+   client.publish("Lichtwecker_Max/RSSI", strVal.c_str());
 }
 
 /**
@@ -265,7 +265,7 @@ bool setup_mqtt()
       DPRINTLN(mqtt_server);
 
       client.setServer(mqtt_server, 1883);
-      if (client.connect("Lichtwecker Modul", "Lichtwecker/STATUS", 0, true, "offline"))
+      if (client.connect("Lichtwecker Modul", "Lichtwecker_Max/STATUS", 0, true, "offline"))
       {
          // Set subscriber
          DPRINT("Setze Subscriber - ");
@@ -365,7 +365,7 @@ String hexStr(unsigned char *data, int len)
 void PublishRgbValue( CRGB rgbcolor )
 {
    String strRgbHex = hexStr((unsigned char *)rgbcolor.raw, 3);
-   client.publish("Lichtwecker/rgb", strRgbHex.c_str());
+   client.publish("Lichtwecker_Max/rgb", strRgbHex.c_str());
 }
 
 
@@ -571,7 +571,7 @@ void SendTimeStatus()
    String timestamp(daysOfTheWeek[timeClientNTP.getDay()]);
    timestamp += " " + timeClientNTP.getFormattedTime();
 
-   client.publish("Lichtwecker/TIME", timestamp.c_str());
+   client.publish("Lichtwecker_Max/TIME", timestamp.c_str());
 }
 
 
@@ -601,13 +601,13 @@ void ReadBME280Data( bool bfInit )
    if( old_temp != cAvgTemperature.Get())
    {
       old_temp = cAvgTemperature.Get();
-      client.publish("Lichtwecker/TEMPERATUR", String(old_temp).c_str());
+      client.publish("Lichtwecker_Max/TEMPERATUR", String(old_temp).c_str());
    }
 
    if( old_press != cAvgPressure.Get())
    {
       old_press = cAvgPressure.Get();
-      client.publish("Lichtwecker/LUFTDRUCK", String(old_press).c_str());
+      client.publish("Lichtwecker_Max/LUFTDRUCK", String(old_press).c_str());
    }
 }
  

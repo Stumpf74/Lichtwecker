@@ -1,6 +1,8 @@
 #ifndef INC_CONFIG_H
 #define INC_CONFIG_H
 
+#include "include.h"
+
 /**
  * @brief mqtt server config
  * 
@@ -9,10 +11,10 @@
 #define mqtt_server "haussteuerung"
 //#define mqtt_user "your_username"
 //#define mqtt_password "your_password"
-const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/Lichtwecker"};
-const char *cpcSubScriberSet = {"Lichtwecker/Set/+"};
-const char *cpcSubScriberGet = {"Lichtwecker/Get"};
-const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt/+"};
+const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/Lichtwecker_Max"};
+const char *cpcSubScriberSet = {"Lichtwecker_Max/Set/+"};
+const char *cpcSubScriberGet = {"Lichtwecker_Max/Get"};
+const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt_max/+"};
 
 
 
@@ -59,15 +61,15 @@ class Config
       ~Config();
 
       const char* ptr_VersionName = {"Lichtwecker"};
-      const char* ptr_VersionNumber = {"1.0"};
+      const char* ptr_VersionNumber = {"2.0"};
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
       
 
 
-      const char* ptr_wifi_ssid = {"MeinWlanSsid"};
-      const char* ptr_wifi_password = {"MeinWlanPW"};
-      const char* ptr_wifi_hostname = {"Lichtwecker"};
+      const char* ptr_wifi_ssid = {MeinWlanSsid};
+      const char* ptr_wifi_password = {MeinWlanPW};
+      const char* ptr_wifi_hostname = {"Lichtwecker_Max"};
 
       typedef struct tsConfig
       {

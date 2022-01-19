@@ -49,3 +49,4 @@ build*/
 *.b#*
 *.s#*
 *.saved_uv4
+/src/Lichtwecker/include.h
