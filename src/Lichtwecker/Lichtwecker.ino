@@ -1,17 +1,20 @@
 
 #include <assert.h>
 #include <time.h>
-//#include <TimeLib.h>
-#include <ESP8266mDNS.h>
+
+// #include <ESP8266mDNS.h>
+// #include <ESP8266WiFi.h>
+
+#include <ESPmDNS.h>
+#include <WiFi.h>
+
+
 #include <NTPClient.h>
-#include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <WiFiUdp.h>
 #include <string.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
 #include "Debug.h"
 #include "AlarmTime.h"
 #include "Config.h"
@@ -34,12 +37,33 @@ const long utcOffsetInSeconds = 3600 * 2; // UTC+2
 NTPClient timeClientNTP(ntpUDP, "fritz.box", utcOffsetInSeconds, 3600);
 static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
 
-#define BMP280_I2C_ADDRESS  0x76
-Adafruit_BME280 bmp; // use I2C interface
-CAverage<float> cAvgTemperature(16, 0.0);
-CAverage<uint16_t> cAvgPressure(16, 0);
+//#define BMP280_I2C_ADDRESS  0x76
+//Adafruit_BME280 bmp; // use I2C interface
+//CAverage<float> cAvgTemperature(16, 0.0);
+//CAverage<uint16_t> cAvgPressure(16, 0);
 //Adafruit_Sensor *bmp_temp = bmp.getTemperatureSensor();
 //Adafruit_Sensor *bmp_pressure = bmp.getPressureSensor();
+
+
+/**
+ * @brief 
+ * 
+ * @param msg 
+ */
+void SendLogDataToMQTT( const String & msg )
+{
+   client.publish("AndysPoolSteuerung/Log", msg.c_str());
+}
+
+
+ /* 
+ * @param msg 
+ */
+void SendLogDataToSerial( const String & msg )
+{
+   DPRINTLN(msg);
+}
+
 
 /**
  * @brief Callback from mqtt
@@ -51,21 +75,32 @@ CAverage<uint16_t> cAvgPressure(16, 0);
 void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
 {
    // Allocate the correct amount of memory for the payload copy
-   byte *p = (byte *)malloc(payload_length);
+   // byte *p = (byte *)malloc(payload_length);
 
-   // Copy the payload to the new buffer
-   memcpy(p, payload, payload_length);
-   p[payload_length] = 0;
+   // // Copy the payload to the new buffer
+   // memcpy(p, payload, payload_length);
+   // p[payload_length] = 0;
 
-   String strMsg = String((char *)p);
+   // String strMsg = String((char *)p);
+   // String strTopic = String(topic);
+
+   String strMsg;
+   for (int i = 0; i < payload_length; i++)
+   {
+      Serial.print((char)payload[i]);
+      strMsg += (char)payload[i];
+   }
+
    String strTopic = String(topic);
+
+
 
    DPRINT("Publish received - Topic: ");
    DPRINT(strTopic.c_str());
    DPRINT("\tMsg: ");
    DPRINTLN(strMsg.c_str());
 
-   if (strstr((char *)p, "Set/ALARM"))
+   if (strTopic.indexOf("Set/ALARM") != std::string::npos)
    {
       cLigthAlarmClock::GetInstance()->ParseAlarms( strMsg );
    }
@@ -100,7 +135,7 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
          bfSendStatus = true;
       }
    }
-   else if (strTopic.indexOf("alarm_clock_mqtt") != std::string::npos)
+   else if (strTopic.indexOf("alarm_clock_mqtt_max") != std::string::npos)
    {
       if( strTopic.indexOf("before_alarm") != std::string::npos )
       {  
@@ -130,7 +165,9 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
    
    
    // Free the memory
-   free(p);
+   //free(p);
+   DPRINTLN("callbackMqtt out");
+
 }
 
 /**
@@ -364,8 +401,8 @@ String hexStr(unsigned char *data, int len)
 
 void PublishRgbValue( CRGB rgbcolor )
 {
-   String strRgbHex = hexStr((unsigned char *)rgbcolor.raw, 3);
-   client.publish("Lichtwecker_Max/rgb", strRgbHex.c_str());
+   //String strRgbHex = hexStr((unsigned char *)rgbcolor.raw, 3);
+   //client.publish("Lichtwecker_Max/rgb", strRgbHex.c_str());
 }
 
 
@@ -383,6 +420,11 @@ void setup()
 
    InitIo();
 
+   //Log::RegisterSendfunction(SendLogDataToMQTT);
+
+   Log::RegisterSendfunction(SendLogDataToSerial);
+
+
    if (setup_wifi())
       if (setup_mqtt())
       {
@@ -398,12 +440,12 @@ void setup()
    cLigthAlarmClock::GetInstance()->RegisterRgbChangedCalback(&PublishRgbValue);
 
    //bmp.begin(BMP280_I2C_ADDRESS);
-   while (!bmp.begin(0x76)) {
-      Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
-      delay(500);
-   }
+   // while (!bmp.begin(0x76)) {
+   //    Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
+   //    delay(500);
+   // }
 
-   ReadBME280Data(true);
+//   ReadBME280Data(true);
 }
 
 /**
@@ -412,9 +454,6 @@ void setup()
  */
 void InitIo()
 {
-  pinMode(LED_BUILTIN, OUTPUT); // LED als Output definieren
-  //digitalWrite(LED_BUILTIN, HIGH); // Ausschalten   
-  digitalWrite(LED_BUILTIN, LOW); // Ausschalten   
 }
 
 /**
@@ -575,41 +614,41 @@ void SendTimeStatus()
 }
 
 
-void ReadBME280Data( bool bfInit )
-{
-   static float old_temp = 0;
-   static uint16_t old_press = 0;
+// void ReadBME280Data( bool bfInit )
+// {
+//    static float old_temp = 0;
+//    static uint16_t old_press = 0;
 
-   float temp = bmp.readTemperature();
-   temp = round(temp*10) / 10;
+//    float temp = bmp.readTemperature();
+//    temp = round(temp*10) / 10;
    
-   float pressure = (bmp.readPressure()/100); // /100 for hPA
-   //float altitude = bmp.readAltitude(1013.25);
-   uint16_t pressure_round = static_cast<uint16_t>(pressure+0.5);
+//    float pressure = (bmp.readPressure()/100); // /100 for hPA
+//    //float altitude = bmp.readAltitude(1013.25);
+//    uint16_t pressure_round = static_cast<uint16_t>(pressure+0.5);
 
-   if (bfInit)
-   {
-      cAvgTemperature.InitBuffer(temp);
-      cAvgPressure.InitBuffer(pressure_round);
-   }
-   else
-   {
-      cAvgTemperature.Add(temp);   
-      cAvgPressure.Add(pressure_round);
-   }
+//    if (bfInit)
+//    {
+//       cAvgTemperature.InitBuffer(temp);
+//       cAvgPressure.InitBuffer(pressure_round);
+//    }
+//    else
+//    {
+//       cAvgTemperature.Add(temp);   
+//       cAvgPressure.Add(pressure_round);
+//    }
 
-   if( old_temp != cAvgTemperature.Get())
-   {
-      old_temp = cAvgTemperature.Get();
-      client.publish("Lichtwecker_Max/TEMPERATUR", String(old_temp).c_str());
-   }
+//    if( old_temp != cAvgTemperature.Get())
+//    {
+//       old_temp = cAvgTemperature.Get();
+//       client.publish("Lichtwecker_Max/TEMPERATUR", String(old_temp).c_str());
+//    }
 
-   if( old_press != cAvgPressure.Get())
-   {
-      old_press = cAvgPressure.Get();
-      client.publish("Lichtwecker_Max/LUFTDRUCK", String(old_press).c_str());
-   }
-}
+//    if( old_press != cAvgPressure.Get())
+//    {
+//       old_press = cAvgPressure.Get();
+//       client.publish("Lichtwecker_Max/LUFTDRUCK", String(old_press).c_str());
+//    }
+// }
  
  
  
@@ -653,7 +692,7 @@ void loop()
    if (currentMillis >= next5Second)
    {
       next5Second = currentMillis + 5000;
-      ReadBME280Data(false);
+    //  ReadBME280Data(false);
    }
 
    // 5Min Schleife

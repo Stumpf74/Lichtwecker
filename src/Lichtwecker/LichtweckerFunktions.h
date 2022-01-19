@@ -119,8 +119,8 @@ private:
 
    static cLigthAlarmClock *m_ptrInstance;
 
-   static const uint8_t m_ucLED_PIN = 4; // --> D4
-   static const uint8_t m_ucNUM_LEDS = 120;
+   static const uint8_t m_ucLED_PIN = 16; // --> IO16
+   static const uint8_t m_ucNUM_LEDS = 150;
    //#define BRIGHTNESS 50
    CRGB m_leds[m_ucNUM_LEDS];
 
@@ -454,7 +454,10 @@ void cLigthAlarmClock::SetRgb(String strMsg)
    fill_solid(m_leds, m_ucNUM_LEDS, color);
    FastLED.show();
    if( m_pFuncRgbCallback != NULL )
-      (*m_pFuncRgbCallback)(color);
+       (*m_pFuncRgbCallback)(color);
+   
+   DPRINTLN( "SetRgb out ");
+
 }
 
 
