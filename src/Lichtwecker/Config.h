@@ -23,7 +23,7 @@ const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt_max/+"};
  * 
  */
 //const int iLdr = A0; 
-
+#define LED_PIN   16     
 
 /**
  * @brief Speicher verwaltung für die Configdaten
@@ -32,7 +32,7 @@ const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt_max/+"};
 class Config
 {
    public:
-      typedef enum LoggingSource
+      enum LoggingSource
       {
          Off = 0,
          Serial,
@@ -60,10 +60,19 @@ class Config
       Config();
       ~Config();
 
-      const char* ptr_VersionName = {"Lichtwecker"};
-      const char* ptr_VersionNumber = {"2.0"};
+      #define VERSIONNAME  "Lichtwecker"
+      #define VERSIONNUMBER  "2.0"
+      // #define VERSIONSTRING_X VERSIONNAME ## " V"
+      // #define VERSIONSTRING   VERSIONSTRING_X ## VERSIONNUMBER
+      // #define BUILDDATE_x __DATE__ ## " " 
+      // #define BUILDDATE BUILDDATE_x ## __TIME__
+
+      const char* ptr_VersionName = VERSIONNAME;
+      const char* ptr_VersionNumber = VERSIONNUMBER;
+      //const char* ptr_VersionString = VERSIONSTRING;
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
+      //const char* ptrBuildString = BUILDDATE;
       
 
 
@@ -155,11 +164,11 @@ void Config::Load( )
  */
 const char * Config::GetVersionString()
 {
-   String str;
-
-   str += String(ptr_VersionName) + " V" + String(ptr_VersionNumber);
-
-   return str.c_str();
+   // String str;
+   // str += String(ptr_VersionName) + " V" + String(ptr_VersionNumber);
+   // return str.c_str();
+//   return ptr_VersionString;
+   return "Version";
 }
 
 /**
@@ -169,11 +178,13 @@ const char * Config::GetVersionString()
  */
 const char * Config::GetBuildDate()
 {
-   String str;
+   // String str;
 
-   str += String(ptrBuildDate) + " " + String(ptrBuildTime);
+   // str += String(ptrBuildDate) + " " + String(ptrBuildTime);
 
-   return str.c_str();
+   // return str.c_str();
+//   return ptrBuildString;
+   return "DATE";
 }
 
 #endif // INC_CONFIG_H

@@ -75,15 +75,6 @@ void SendLogDataToSerial( const String & msg )
 void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
 {
    // Allocate the correct amount of memory for the payload copy
-   // byte *p = (byte *)malloc(payload_length);
-
-   // // Copy the payload to the new buffer
-   // memcpy(p, payload, payload_length);
-   // p[payload_length] = 0;
-
-   // String strMsg = String((char *)p);
-   // String strTopic = String(topic);
-
    String strMsg;
    for (int i = 0; i < payload_length; i++)
    {
@@ -92,8 +83,6 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
    }
 
    String strTopic = String(topic);
-
-
 
    DPRINT("Publish received - Topic: ");
    DPRINT(strTopic.c_str());
@@ -146,6 +135,11 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
       {  
          //cLigthAlarmClock::GetInstance()->StartLigthSequenz();
          DPRINTLN("start");
+         if (strMsg.indexOf("SIMULATION") != std::string::npos)
+         {
+            cLigthAlarmClock::GetInstance()->StartSimulation();
+            Log::ActivateLogging(true);
+         }
       }   
       else if( strTopic.indexOf("stop") != std::string::npos )
       {  
@@ -163,11 +157,6 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
       }
    }
    
-   
-   // Free the memory
-   //free(p);
-   DPRINTLN("callbackMqtt out");
-
 }
 
 /**

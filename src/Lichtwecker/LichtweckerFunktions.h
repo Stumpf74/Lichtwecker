@@ -78,6 +78,38 @@ DEFINE_GRADIENT_PALETTE(sunrise_gp){
       255,  240,     240,     255  //sehr helles Blau
 };
 
+CRGBPalette16 currentPalette;
+TBlendType    currentBlending;
+
+extern CRGBPalette16 myRedWhiteBluePalette;
+extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
+
+// This example shows how to set up a static color palette
+// which is stored in PROGMEM (flash), which is almost always more
+// plentiful than RAM.  A static PROGMEM palette like this
+// takes up 64 bytes of flash.
+const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM =
+{
+    CRGB::Red,
+    CRGB::Gray, // 'white' is too bright compared to red and blue
+    CRGB::Blue,
+    CRGB::Black,
+
+    CRGB::Red,
+    CRGB::Gray,
+    CRGB::Blue,
+    CRGB::Black,
+
+    CRGB::Red,
+    CRGB::Red,
+    CRGB::Gray,
+    CRGB::Gray,
+    CRGB::Blue,
+    CRGB::Blue,
+    CRGB::Black,
+    CRGB::Black
+};
+
 
 /**
  * @brief class cLigthAlarmClock 
@@ -98,6 +130,7 @@ class cLigthAlarmClock
    void SetRgb(String strMsg);
    void ParseAlarms( String strMsg );
    void StartLigthSequenz();
+   void StartSimulation();
    void RegisterRgbChangedCalback( void (*pFuncCallback)(CRGB));   
 
 
@@ -111,6 +144,12 @@ private:
    void CheckTimeStamp(time_t actTime);
    void StartAlarmSequenz();
    int dayofweek(int day,int month,int year);
+   void Simulation(time_t actTime);
+   void SetupPurpleAndGreenPalette();
+   void SetupBlackAndWhiteStripedPalette();
+   void SetupTotallyRandomPalette();
+   void ChangePalettePeriodically();
+   void FillLEDsFromPaletteColors( uint8_t colorIndex);
 
 
 private:
@@ -137,6 +176,8 @@ private:
    bool m_IsSunriseEnded;
    uint32_t m_uiSunriseIndex;
    uint32_t m_uiAlarmOffCount;
+
+   bool bfIsSimaulationActive;
 
    void (*m_pFuncRgbCallback)(CRGB);
 };
@@ -217,8 +258,11 @@ cLigthAlarmClock *cLigthAlarmClock::m_ptrInstance = nullptr;
  * 
  */
 cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false), m_uiSunriseIndex(0), m_uiSunriseTimeSpan(1800),m_uiSunriseDelay(0),
-   m_IsSunriseEnded(false), m_uiAlarmOffTime(3600), m_uiAlarmOffCount(0), m_pFuncRgbCallback(NULL)
+   m_IsSunriseEnded(false), m_uiAlarmOffTime(3600), m_uiAlarmOffCount(0), m_pFuncRgbCallback(NULL), bfIsSimaulationActive(false)
 {
+   currentPalette = RainbowColors_p;
+   currentBlending = LINEARBLEND;
+   
    CalculateDelayTime();
 }
 
@@ -267,6 +311,8 @@ void cLigthAlarmClock::Stop()
    LedsOff();
    m_IsSunriseStarted = false;
    m_IsSunriseEnded = false;
+   bfIsSimaulationActive = false;
+
 }
 
 void cLigthAlarmClock::StartLigthSequenz()
@@ -275,7 +321,17 @@ void cLigthAlarmClock::StartLigthSequenz()
    m_uiSunriseDelay = m_uiLigthStepDelay;
    m_IsSunriseEnded = false;
    m_uiAlarmOffCount = 0;
+   bfIsSimaulationActive = false;
 }
+
+void cLigthAlarmClock::StartSimulation()
+{
+   LedsOff();
+   m_IsSunriseStarted = false;
+   m_IsSunriseEnded = false;
+   bfIsSimaulationActive = true;
+}
+
 
 void cLigthAlarmClock::StartAlarmSequenz()
 {
@@ -402,6 +458,12 @@ void cLigthAlarmClock::Runtime(time_t actTime)
       CheckTimeIsExpired(actTime);
    }
 
+   if(bfIsSimaulationActive)
+   {
+      Simulation(actTime);
+   }
+
+
 }
 
 /**
@@ -455,9 +517,6 @@ void cLigthAlarmClock::SetRgb(String strMsg)
    FastLED.show();
    if( m_pFuncRgbCallback != NULL )
        (*m_pFuncRgbCallback)(color);
-   
-   DPRINTLN( "SetRgb out ");
-
 }
 
 
@@ -465,6 +524,105 @@ void cLigthAlarmClock::RegisterRgbChangedCalback( void (*pFuncCallback)(CRGB))
 {
    m_pFuncRgbCallback = pFuncCallback;
 }   
+
+
+
+void cLigthAlarmClock::Simulation(time_t actTime)
+{
+    #define UPDATES_PER_SECOND 100
+
+    
+    ChangePalettePeriodically();
+
+    static uint8_t startIndex = 0;
+    startIndex = startIndex + 1; /* motion speed */
+
+    FillLEDsFromPaletteColors( startIndex);
+
+    FastLED.show();
+    FastLED.delay(1000 / UPDATES_PER_SECOND);
+
+}
+
+void cLigthAlarmClock::FillLEDsFromPaletteColors( uint8_t colorIndex)
+{
+    uint8_t brightness = 255;
+
+    for( int i = 0; i < m_ucNUM_LEDS; i++) {
+        m_leds[i] = ColorFromPalette( currentPalette, colorIndex, brightness, currentBlending);
+        colorIndex += 3;
+    }
+}
+
+
+// There are several different palettes of colors demonstrated here.
+//
+// FastLED provides several 'preset' palettes: RainbowColors_p, RainbowStripeColors_p,
+// OceanColors_p, CloudColors_p, LavaColors_p, ForestColors_p, and PartyColors_p.
+//
+// Additionally, you can manually define your own color palettes, or you can write
+// code that creates color palettes on the fly.  All are shown here.
+void cLigthAlarmClock::ChangePalettePeriodically()
+{
+    uint8_t secondHand = (millis() / 1000) % 60;
+    static uint8_t lastSecond = 99;
+
+    if( lastSecond != secondHand) {
+        lastSecond = secondHand;
+        if( secondHand ==  0)  { currentPalette = RainbowColors_p;         currentBlending = LINEARBLEND; }
+        if( secondHand == 10)  { currentPalette = RainbowStripeColors_p;   currentBlending = NOBLEND;  }
+        if( secondHand == 15)  { currentPalette = RainbowStripeColors_p;   currentBlending = LINEARBLEND; }
+        if( secondHand == 20)  { SetupPurpleAndGreenPalette();             currentBlending = LINEARBLEND; }
+        if( secondHand == 25)  { SetupTotallyRandomPalette();              currentBlending = LINEARBLEND; }
+        if( secondHand == 30)  { SetupBlackAndWhiteStripedPalette();       currentBlending = NOBLEND; }
+        if( secondHand == 35)  { SetupBlackAndWhiteStripedPalette();       currentBlending = LINEARBLEND; }
+        if( secondHand == 40)  { currentPalette = CloudColors_p;           currentBlending = LINEARBLEND; }
+        if( secondHand == 45)  { currentPalette = PartyColors_p;           currentBlending = LINEARBLEND; }
+        if( secondHand == 50)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = NOBLEND;  }
+        if( secondHand == 55)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = LINEARBLEND; }
+    }
+}
+
+// This function fills the palette with totally random colors.
+void cLigthAlarmClock::SetupTotallyRandomPalette()
+{
+    for( int i = 0; i < 16; i++) {
+        currentPalette[i] = CHSV( random8(), 255, random8());
+    }
+}
+
+// This function sets up a palette of black and white stripes,
+// using code.  Since the palette is effectively an array of
+// sixteen CRGB colors, the various fill_* functions can be used
+// to set them up.
+void cLigthAlarmClock::SetupBlackAndWhiteStripedPalette()
+{
+    // 'black out' all 16 palette entries...
+    fill_solid( currentPalette, 16, CRGB::Black);
+    // and set every fourth one to white.
+    currentPalette[0] = CRGB::White;
+    currentPalette[4] = CRGB::White;
+    currentPalette[8] = CRGB::White;
+    currentPalette[12] = CRGB::White;
+
+}
+
+// This function sets up a palette of purple and green stripes.
+void cLigthAlarmClock::SetupPurpleAndGreenPalette()
+{
+    CRGB purple = CHSV( HUE_PURPLE, 255, 255);
+    CRGB green  = CHSV( HUE_GREEN, 255, 255);
+    CRGB black  = CRGB::Black;
+
+    currentPalette = CRGBPalette16(
+                                   green,  green,  black,  black,
+                                   purple, purple, black,  black,
+                                   green,  green,  black,  black,
+                                   purple, purple, black,  black );
+}
+
+
+
 
 
 
