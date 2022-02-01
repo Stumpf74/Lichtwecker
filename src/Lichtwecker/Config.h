@@ -11,9 +11,9 @@
 #define mqtt_server "haussteuerung"
 //#define mqtt_user "your_username"
 //#define mqtt_password "your_password"
-const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/Lichtwecker_Max"};
-const char *cpcSubScriberSet = {"Lichtwecker_Max/Set/+"};
-const char *cpcSubScriberGet = {"Lichtwecker_Max/Get"};
+const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/"};
+const char *cpcSubScriberSet = {"/Set/+"};
+const char *cpcSubScriberGet = {"/Get"};
 const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt_max/+"};
 
 
@@ -24,6 +24,8 @@ const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt_max/+"};
  */
 //const int iLdr = A0; 
 #define LED_PIN   16     
+#define TOUCH_PIN_1   T0  // 4     
+#define TOUCH_PIN_2   T8 // 0    
 
 /**
  * @brief Speicher verwaltung für die Configdaten
@@ -50,8 +52,8 @@ class Config
 
       const char * GetVersionName() { return ptr_VersionName;}
       const char * GetVersionNumber() { return ptr_VersionNumber;}
-      const char * GetBuildDate();
-      const char * GetVersionString();
+      const String & GetBuildDate();
+      const String & GetVersionString();
 
       const bool GetLoggingActive( ) {return m_tsConfig.loggingActive;}
       void  SetLoggingActive(bool set) {m_tsConfig.loggingActive = set; Write();}
@@ -62,19 +64,12 @@ class Config
 
       #define VERSIONNAME  "Lichtwecker"
       #define VERSIONNUMBER  "2.0"
-      // #define VERSIONSTRING_X VERSIONNAME ## " V"
-      // #define VERSIONSTRING   VERSIONSTRING_X ## VERSIONNUMBER
-      // #define BUILDDATE_x __DATE__ ## " " 
-      // #define BUILDDATE BUILDDATE_x ## __TIME__
+
 
       const char* ptr_VersionName = VERSIONNAME;
       const char* ptr_VersionNumber = VERSIONNUMBER;
-      //const char* ptr_VersionString = VERSIONSTRING;
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
-      //const char* ptrBuildString = BUILDDATE;
-      
-
 
       const char* ptr_wifi_ssid = {MeinWlanSsid};
       const char* ptr_wifi_password = {MeinWlanPW};
@@ -162,13 +157,10 @@ void Config::Load( )
  * 
  * @return const char* 
  */
-const char * Config::GetVersionString()
+const String & Config::GetVersionString()
 {
-   // String str;
-   // str += String(ptr_VersionName) + " V" + String(ptr_VersionNumber);
-   // return str.c_str();
-//   return ptr_VersionString;
-   return "Version";
+   static String str = String(ptr_VersionName) + " V" + String(ptr_VersionNumber);
+   return str;
 }
 
 /**
@@ -176,15 +168,10 @@ const char * Config::GetVersionString()
  * 
  * @return const char* 
  */
-const char * Config::GetBuildDate()
+const String & Config::GetBuildDate()
 {
-   // String str;
-
-   // str += String(ptrBuildDate) + " " + String(ptrBuildTime);
-
-   // return str.c_str();
-//   return ptrBuildString;
-   return "DATE";
+   static String str = String(ptrBuildDate) + " " + String(ptrBuildTime);
+   return str;
 }
 
 #endif // INC_CONFIG_H

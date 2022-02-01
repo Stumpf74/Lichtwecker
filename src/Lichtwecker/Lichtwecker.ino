@@ -22,6 +22,7 @@
 #include "Log.h"
 #include "Avarage.h"
 #include "LichtweckerFunktions.h"
+#include "TouchSensorFunktions.h"
 
 // Callback function header
 //void callbackMqtt(char* topic, byte* payload, unsigned int payload_length);
@@ -31,11 +32,14 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length);
 WiFiClient espClient;
 PubSubClient client(mqtt_server, 1883, callbackMqtt, espClient);
 CAverage<int32_t> cRssiAvg(16, -65);
+
 bool bfSendStatus = false;
 WiFiUDP ntpUDP;
 const long utcOffsetInSeconds = 3600 * 2; // UTC+2
 NTPClient timeClientNTP(ntpUDP, "fritz.box", utcOffsetInSeconds, 3600);
 static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
+cTouchSensor cTouchSensor1(TOUCH_PIN_1, 20);
+cTouchSensor cTouchSensor2(TOUCH_PIN_2, 20);
 
 //#define BMP280_I2C_ADDRESS  0x76
 //Adafruit_BME280 bmp; // use I2C interface
@@ -52,7 +56,7 @@ static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa
  */
 void SendLogDataToMQTT( const String & msg )
 {
-   client.publish("AndysPoolSteuerung/Log", msg.c_str());
+   Publish("Log", msg);
 }
 
 
@@ -160,6 +164,19 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
 }
 
 /**
+ * @brief 
+ * 
+ * @param Topic 
+ * @param Msg 
+ */
+void Publish(const char * Topic, const String & Msg)
+{
+   String newTopic = String(Config::GetInstance()->GetWifiHostname()) + "/" + String(Topic);
+   Publish(newTopic.c_str(), Msg.c_str());
+} 
+
+
+/**
  * @brief Get the Rssi object
  * 
  */
@@ -175,7 +192,7 @@ void GetRssi()
    {
       rssi_old = rssi;
       String strVal = String(rssi);
-      client.publish("Lichtwecker_Max/RSSI", strVal.c_str());
+      Publish("RSSI", strVal);
    }
 }
 
@@ -188,15 +205,15 @@ void GetWifiStatus()
    int32_t rssi = cRssiAvg.Get();
    String strVal = String(rssi);
 
-   client.publish("Lichtwecker_Max/STATUS", "online");
-   client.publish("Lichtwecker_Max/VERSION", Config::GetInstance()->GetVersionString());
-   client.publish("Lichtwecker_Max/BUILD", Config::GetInstance()->GetBuildDate());
+   Publish("STATUS", "online");
+   Publish("VERSION", Config::GetInstance()->GetVersionString());
+   Publish("BUILD", Config::GetInstance()->GetBuildDate());
 
    IPAddress ip = WiFi.localIP();
-   client.publish("Lichtwecker_Max/LOCALIP", ip.toString().c_str());
-   client.publish("Lichtwecker_Max/HOSTNAME", Config::GetInstance()->GetWifiHostname());
-   client.publish("Lichtwecker_Max/SSID", Config::GetInstance()->GetWifiSsid());
-   client.publish("Lichtwecker_Max/RSSI", strVal.c_str());
+   Publish("LOCALIP", ip.toString());
+   Publish("HOSTNAME", Config::GetInstance()->GetWifiHostname());
+   Publish("SSID", Config::GetInstance()->GetWifiSsid());
+   Publish("RSSI", strVal);
 }
 
 /**
@@ -291,23 +308,27 @@ bool setup_mqtt()
       DPRINTLN(mqtt_server);
 
       client.setServer(mqtt_server, 1883);
-      if (client.connect("Lichtwecker Modul", "Lichtwecker_Max/STATUS", 0, true, "offline"))
+      if (client.connect("Lichtwecker Max", String( String(Config::GetInstance()->GetWifiHostname()) + String("/STATUS")).c_str(), 0, true, "offline"))
       {
          // Set subscriber
          DPRINT("Setze Subscriber - ");
-         DPRINTLN(cpcSubScriberSet);
-         client.subscribe(cpcSubScriberSet);
+         String temp = String(Config::GetInstance()->GetWifiHostname()) + String(cpcSubScriberSet);
+         DPRINTLN(temp);
+         client.subscribe(temp.c_str());
+         
          DPRINT("Setze Subscriber - ");
-         DPRINTLN(cpcSubScriberGet);
-         client.subscribe(cpcSubScriberGet);
+         temp = String(Config::GetInstance()->GetWifiHostname()) + String(cpcSubScriberGet);
+         DPRINTLN(temp);
+         client.subscribe(temp.c_str());
 
          DPRINT("Setze Subscriber - ");
          DPRINTLN(cpcSubScriberAlarmClock);
          client.subscribe(cpcSubScriberAlarmClock);
 
          DPRINT("Setze Subscriber - ");
-         DPRINTLN(cpcSubScriberSetHomeProtokollServer);
-         client.subscribe(cpcSubScriberSetHomeProtokollServer);
+         temp = String(cpcSubScriberSetHomeProtokollServer) + String(Config::GetInstance()->GetWifiHostname());
+         DPRINTLN(temp);
+         client.subscribe(temp.c_str());
 
          GetWifiStatus();
          bfIsMqttConnected = true;
@@ -390,8 +411,8 @@ String hexStr(unsigned char *data, int len)
 
 void PublishRgbValue( CRGB rgbcolor )
 {
-   //String strRgbHex = hexStr((unsigned char *)rgbcolor.raw, 3);
-   //client.publish("Lichtwecker_Max/rgb", strRgbHex.c_str());
+   String strRgbHex = hexStr((unsigned char *)rgbcolor.raw, 3);
+   Publish("rgb", strRgbHex);
 }
 
 
@@ -405,10 +426,10 @@ void setup()
    delay(500);
    Serial.begin(115200);
    Config::GetInstance();
-   DPRINTLN("Starte Lichtwecker");
+   Log::ActivateLogging(true);
+   Log::Print ("Starte Lichtwecker");
 
    InitIo();
-
    //Log::RegisterSendfunction(SendLogDataToMQTT);
 
    Log::RegisterSendfunction(SendLogDataToSerial);
@@ -427,6 +448,10 @@ void setup()
 
    cLigthAlarmClock::GetInstance()->Setup();
    cLigthAlarmClock::GetInstance()->RegisterRgbChangedCalback(&PublishRgbValue);
+
+   cTouchSensor1.Setup();
+   cTouchSensor2.Setup();
+
 
    //bmp.begin(BMP280_I2C_ADDRESS);
    // while (!bmp.begin(0x76)) {
@@ -599,7 +624,7 @@ void SendTimeStatus()
    String timestamp(daysOfTheWeek[timeClientNTP.getDay()]);
    timestamp += " " + timeClientNTP.getFormattedTime();
 
-   client.publish("Lichtwecker_Max/TIME", timestamp.c_str());
+   Publish("TIME", timestamp);
 }
 
 
@@ -629,13 +654,13 @@ void SendTimeStatus()
 //    if( old_temp != cAvgTemperature.Get())
 //    {
 //       old_temp = cAvgTemperature.Get();
-//       client.publish("Lichtwecker_Max/TEMPERATUR", String(old_temp).c_str());
+//       Publish("Lichtwecker_Max/TEMPERATUR", String(old_temp).c_str());
 //    }
 
 //    if( old_press != cAvgPressure.Get())
 //    {
 //       old_press = cAvgPressure.Get();
-//       client.publish("Lichtwecker_Max/LUFTDRUCK", String(old_press).c_str());
+//       Publish("Lichtwecker_Max/LUFTDRUCK", String(old_press).c_str());
 //    }
 // }
  
@@ -661,7 +686,29 @@ void loop()
    {
       previousMillis10ms = currentMillis;
 
-      // Ab hier user code!
+      if( cTouchSensor1.IsShortPressed())
+      {  
+         Log::Print("T1 short");
+         cLigthAlarmClock::GetInstance()->DimColor();
+      }
+
+      if( cTouchSensor1.IsLongPressed())
+         cLigthAlarmClock::GetInstance()->SetBrigthness(50);
+
+      if( cTouchSensor2.IsShortPressed())
+      {
+         //Log::Print("T2 short");
+         cLigthAlarmClock::GetInstance()->SetNextColor();
+      }  
+
+      if( cTouchSensor2.IsLongPressed())
+      {
+         //Log::Print("T2 long");
+         cLigthAlarmClock::GetInstance()->Stop();
+      }  
+
+
+
    }
 
    // 1000ms Schleife
@@ -674,6 +721,11 @@ void loop()
          bfSendStatus = false;
          GetWifiStatus();
          SendTimeStatus();
+      }
+
+      if (CheckWifiIsConnected())
+      {
+         CheckMqttClientIsConnected();
       }
    }
 
@@ -689,11 +741,6 @@ void loop()
    {
       next5Min = currentMillis + 5 * 60 * 1000; // alle 5 Min;
       GetRssi();
-
-      if (CheckWifiIsConnected())
-      {
-         CheckMqttClientIsConnected();
-      }
 
       bfSendStatus = true;
    }
@@ -711,4 +758,7 @@ void loop()
    ArduinoOTA.handle();
    timeClientNTP.update();
    cLigthAlarmClock::GetInstance()->Runtime(timeClientNTP.getEpochTime());
+   cTouchSensor1.Runtime(currentMillis);
+   cTouchSensor2.Runtime(currentMillis);
+
 }
