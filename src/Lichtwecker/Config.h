@@ -73,7 +73,7 @@ class Config
 
       const char* ptr_wifi_ssid = {MeinWlanSsid};
       const char* ptr_wifi_password = {MeinWlanPW};
-      const char* ptr_wifi_hostname = {"Lichtwecker_Max"};
+      const char* ptr_wifi_hostname = {"Lichtwecker_Teich"};
 
       typedef struct tsConfig
       {

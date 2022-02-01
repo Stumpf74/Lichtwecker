@@ -172,7 +172,7 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
 void Publish(const char * Topic, const String & Msg)
 {
    String newTopic = String(Config::GetInstance()->GetWifiHostname()) + "/" + String(Topic);
-   Publish(newTopic.c_str(), Msg.c_str());
+   client.publish (newTopic.c_str(), Msg.c_str());
 } 
 
 
@@ -204,11 +204,9 @@ void GetWifiStatus()
 {
    int32_t rssi = cRssiAvg.Get();
    String strVal = String(rssi);
-
    Publish("STATUS", "online");
    Publish("VERSION", Config::GetInstance()->GetVersionString());
    Publish("BUILD", Config::GetInstance()->GetBuildDate());
-
    IPAddress ip = WiFi.localIP();
    Publish("LOCALIP", ip.toString());
    Publish("HOSTNAME", Config::GetInstance()->GetWifiHostname());
@@ -308,7 +306,7 @@ bool setup_mqtt()
       DPRINTLN(mqtt_server);
 
       client.setServer(mqtt_server, 1883);
-      if (client.connect("Lichtwecker Max", String( String(Config::GetInstance()->GetWifiHostname()) + String("/STATUS")).c_str(), 0, true, "offline"))
+      if (client.connect(Config::GetInstance()->GetWifiHostname(), String( String(Config::GetInstance()->GetWifiHostname()) + String("/STATUS")).c_str(), 0, true, "offline"))
       {
          // Set subscriber
          DPRINT("Setze Subscriber - ");

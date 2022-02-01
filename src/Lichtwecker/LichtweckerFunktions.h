@@ -164,7 +164,7 @@ private:
 
    static const uint8_t m_ucLED_PIN = 16; // --> IO16
    //static const uint8_t m_ucNUM_LEDS = 29;
-   static const uint8_t m_ucNUM_LEDS = 66;
+   static const uint8_t m_ucNUM_LEDS = 4;
 //   static const uint8_t m_ucNUM_LEDS = 150;
    //#define BRIGHTNESS 50
    CRGB m_leds[m_ucNUM_LEDS];
