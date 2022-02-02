@@ -3,6 +3,13 @@
 
 #include "include.h"
 
+//#define MAX
+//#define AMELIE
+#define TEICH
+//#define LICHTWECKER
+
+
+
 /**
  * @brief mqtt server config
  * 
@@ -24,8 +31,8 @@ const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt_max/+"};
  */
 //const int iLdr = A0; 
 #define LED_PIN   16     
-#define TOUCH_PIN_1   T0  // 4     
-#define TOUCH_PIN_2   T8 // 0    
+#define TOUCH_PIN_1   T0  // IO 4     
+#define TOUCH_PIN_2   T8 // IO 33    
 
 /**
  * @brief Speicher verwaltung für die Configdaten
@@ -73,7 +80,19 @@ class Config
 
       const char* ptr_wifi_ssid = {MeinWlanSsid};
       const char* ptr_wifi_password = {MeinWlanPW};
+
+#ifdef MAX      
+      const char* ptr_wifi_hostname = {"Lichtwecker_Max"};
+#endif
+#ifdef AMELIE      
+      const char* ptr_wifi_hostname = {"Lichtwecker_Amelie"};
+#endif
+#ifdef TEICH      
       const char* ptr_wifi_hostname = {"Lichtwecker_Teich"};
+#endif
+#ifdef LICHTWECKER      
+      const char* ptr_wifi_hostname = {"Lichtwecker"};
+#endif
 
       typedef struct tsConfig
       {

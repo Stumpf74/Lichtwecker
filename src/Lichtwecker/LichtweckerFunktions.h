@@ -163,9 +163,19 @@ private:
    static cLigthAlarmClock *m_ptrInstance;
 
    static const uint8_t m_ucLED_PIN = 16; // --> IO16
-   //static const uint8_t m_ucNUM_LEDS = 29;
-   static const uint8_t m_ucNUM_LEDS = 4;
+#ifdef MAX      
+   static const uint8_t m_ucNUM_LEDS = 69;
+#endif
+#ifdef AMELIE      
+   static const uint8_t m_ucNUM_LEDS = 29;
+#endif
+#ifdef TEICH      
 //   static const uint8_t m_ucNUM_LEDS = 150;
+   static const uint8_t m_ucNUM_LEDS = 100;
+#endif
+#ifdef LICHTWECKER      
+   static const uint8_t m_ucNUM_LEDS = 120;
+#endif
    //#define BRIGHTNESS 50
    CRGB m_leds[m_ucNUM_LEDS];
    CRGB m_crgbLastColor;
@@ -718,6 +728,7 @@ void cLigthAlarmClock::SetupPurpleAndGreenPalette()
 void cLigthAlarmClock::FillSolid_X(const CRGB color)
 {
    fill_solid(m_leds, m_ucNUM_LEDS, color);
+#ifdef MAX      
    m_leds[0] = CRGB::Black;
    m_leds[1] = CRGB::Black;
    m_leds[2] = CRGB::Black;
@@ -727,6 +738,7 @@ void cLigthAlarmClock::FillSolid_X(const CRGB color)
    m_leds[6] = CRGB::Black;
    m_leds[7] = CRGB::Black;
    m_leds[8] = CRGB::Black;
+#endif
 }
 
 
