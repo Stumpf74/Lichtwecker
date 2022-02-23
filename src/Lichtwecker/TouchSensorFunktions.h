@@ -32,12 +32,13 @@ private:
    uint32_t m_uiPinNumber;
    uint32_t m_uiTouchValueMax;
    CAverage<int32_t> m_cAvgTouch;
+   CAverage<int32_t> m_cAvgTouchMax;
    bool m_bfIsPressed;
    uint32_t m_uiThresholdPercent;
    time_t m_uiTimePressed;
    bool m_bfIsShortPressed;
    bool m_bfIsLongPressed;
-
+   uint32_t m_uiLastCheckTouchsensorMax;
 
 
 };
@@ -48,7 +49,7 @@ private:
  * @brief Construct a new c Touch Sensor::c Touch Sensor object
  * 
  */
-cTouchSensor::cTouchSensor( const uint32_t PinNumber, const uint32_t ThresholdPercent, const uint32_t AvgSize ) : m_cAvgTouch(AvgSize,100), 
+cTouchSensor::cTouchSensor( const uint32_t PinNumber, const uint32_t ThresholdPercent, const uint32_t AvgSize ) : m_cAvgTouch(AvgSize,100), m_cAvgTouchMax(64,100), 
    m_uiPinNumber(PinNumber), m_uiTouchValueMax(0), m_bfIsPressed(false), m_uiThresholdPercent(ThresholdPercent), m_bfIsShortPressed(false), m_bfIsLongPressed(false)
 {
 
@@ -70,6 +71,7 @@ cTouchSensor::~cTouchSensor()
 void cTouchSensor::Setup()
 {
    m_cAvgTouch.InitBuffer(touchRead(m_uiPinNumber));
+   m_cAvgTouchMax.InitBuffer(touchRead(m_uiPinNumber));
 }
 
 
@@ -84,15 +86,23 @@ void cTouchSensor::Runtime(time_t actTime)
    uint32_t uivaluetouch = touchRead(m_uiPinNumber);
 
    m_cAvgTouch.Add(uivaluetouch);
-
-   uint32_t uiAvg = m_cAvgTouch.Get();
-
-   if( uiAvg > m_uiTouchValueMax )
+   
+   
+   if( actTime > (m_uiLastCheckTouchsensorMax + 15000))
    {
-      m_uiTouchValueMax = uiAvg;
-      //Log::PrintF("%i:          new Max: %i", m_uiPinNumber, m_uiTouchValueMax);
+      static uint32_t uiLastTouchValueMax = 0;
+      m_uiLastCheckTouchsensorMax = actTime;
+      m_cAvgTouchMax.Add(uivaluetouch);
+
+      m_uiTouchValueMax = m_cAvgTouchMax.Get() ;
+   
+      if( uiLastTouchValueMax != m_uiTouchValueMax )
+         Log::PrintF("%i:          new Max: %i", m_uiPinNumber, m_uiTouchValueMax);
+
    }
 
+
+   uint32_t uiAvg = m_cAvgTouch.Get();
    double threshold = m_uiTouchValueMax - (m_uiTouchValueMax / 100.0 * m_uiThresholdPercent);
 
    if (uiAvg <= threshold)

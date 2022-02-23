@@ -3,9 +3,9 @@
 
 #include "include.h"
 
-//#define MAX
+#define MAX
 //#define AMELIE
-#define TEICH
+//#define TEICH
 //#define LICHTWECKER
 
 
@@ -70,7 +70,7 @@ class Config
       ~Config();
 
       #define VERSIONNAME  "Lichtwecker"
-      #define VERSIONNUMBER  "2.0"
+      #define VERSIONNUMBER  "2.1"
 
 
       const char* ptr_VersionName = VERSIONNAME;

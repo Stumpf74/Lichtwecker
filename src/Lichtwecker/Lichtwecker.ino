@@ -38,8 +38,8 @@ WiFiUDP ntpUDP;
 const long utcOffsetInSeconds = 3600 * 2; // UTC+2
 NTPClient timeClientNTP(ntpUDP, "fritz.box", utcOffsetInSeconds, 3600);
 static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
-cTouchSensor cTouchSensor1(TOUCH_PIN_1, 20);
-cTouchSensor cTouchSensor2(TOUCH_PIN_2, 20);
+cTouchSensor cTouchSensor1(TOUCH_PIN_1, 25);
+cTouchSensor cTouchSensor2(TOUCH_PIN_2, 25);
 
 //#define BMP280_I2C_ADDRESS  0x76
 //Adafruit_BME280 bmp; // use I2C interface
@@ -57,6 +57,10 @@ cTouchSensor cTouchSensor2(TOUCH_PIN_2, 20);
 void SendLogDataToMQTT( const String & msg )
 {
    Publish("Log", msg);
+
+#ifdef TEICH
+   SendLogDataToSerial(msg);
+#endif
 }
 
 
@@ -65,7 +69,7 @@ void SendLogDataToMQTT( const String & msg )
  */
 void SendLogDataToSerial( const String & msg )
 {
-   DPRINTLN(msg);
+   Log::Print(msg);
 }
 
 
@@ -88,10 +92,10 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
 
    String strTopic = String(topic);
 
-   DPRINT("Publish received - Topic: ");
-   DPRINT(strTopic.c_str());
-   DPRINT("\tMsg: ");
-   DPRINTLN(strMsg.c_str());
+   Log::Print("Publish received - Topic: ");
+   Log::Print(strTopic.c_str());
+   Log::Print("\tMsg: ");
+   Log::Print(strMsg.c_str());
 
    if (strTopic.indexOf("Set/ALARM") != std::string::npos)
    {
@@ -99,9 +103,9 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
    }
    else if (strTopic.indexOf("Set/RESET") != std::string::npos)
    {
-      DPRINTLN("externer Reset wird ausgeführt in 1,5s");
+      Log::Print("externer Reset wird ausgeführt in 1,5s");
       delay(1500);
-      ESP.restart();
+      //ESP.restart();
    }
    else if (strTopic.indexOf("Set/LOGGING") != std::string::npos)
    {
@@ -118,7 +122,7 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
    }
    else if (strTopic.indexOf("Set/RGB") != std::string::npos)
    {
-      //DPRINTLN("RGB Msg erhalten" + strMsg);
+      //Log::Print("RGB Msg erhalten" + strMsg);
       cLigthAlarmClock::GetInstance()->SetRgb(strMsg);
    }
    else if (strTopic.indexOf("Get") != std::string::npos)
@@ -133,12 +137,12 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
       if( strTopic.indexOf("before_alarm") != std::string::npos )
       {  
          cLigthAlarmClock::GetInstance()->StartLigthSequenz();
-         DPRINTLN("Sunrise is started");
+         Log::Print("Sunrise is started");
       }   
       else if( strTopic.indexOf("start") != std::string::npos )
       {  
          //cLigthAlarmClock::GetInstance()->StartLigthSequenz();
-         DPRINTLN("start");
+         Log::Print("start");
          if (strMsg.indexOf("SIMULATION") != std::string::npos)
          {
             cLigthAlarmClock::GetInstance()->StartSimulation();
@@ -148,16 +152,16 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
       else if( strTopic.indexOf("stop") != std::string::npos )
       {  
          cLigthAlarmClock::GetInstance()->Stop();
-         DPRINTLN("stop");
+         Log::Print("stop");
       }   
       else if( strTopic.indexOf("alarm") != std::string::npos )
       {  
          //cLigthAlarmClock::GetInstance()->StartLigthSequenz();
-         DPRINTLN("alarm");
+         Log::Print("alarm");
       }   
       else
       {
-         DPRINT("MQTT command undefined: ");DPRINTLN(strTopic);
+         Log::Print("MQTT command undefined: ");Log::Print(strTopic);
       }
    }
    
@@ -222,15 +226,15 @@ bool setup_wifi()
 {
    delay(100);
    // We start by connecting to a WiFi network
-   DPRINTLN();
-   DPRINT("Connecting to ");
-   DPRINTLN(Config::GetInstance()->GetWifiSsid());
+   Log::Print();
+   Log::Print("Connecting to ");
+   Log::Print(Config::GetInstance()->GetWifiSsid());
 
    WiFi.mode(WIFI_STA); // nur als client arbeiten
    WiFi.hostname(Config::GetInstance()->GetWifiHostname());
    WiFi.begin(Config::GetInstance()->GetWifiSsid(), Config::GetInstance()->GetWifiSPassword());
-   DPRINT("Set Hostname: ");
-   DPRINTLN(Config::GetInstance()->GetWifiHostname());
+   Log::Print("Set Hostname: ");
+   Log::Print(Config::GetInstance()->GetWifiHostname());
 
    uint32_t uiWaitTimeout = 20; // wenn wir nach 10s keine Verbindung haben passt was nicht
    bool bfIsConnected = true;
@@ -238,43 +242,43 @@ bool setup_wifi()
    while (WiFi.status() != WL_CONNECTED)
    {
       delay(500);
-      DPRINT(".");
+      Log::Print(".");
       if (--uiWaitTimeout == 0)
       {
-         DPRINTLN();
-         DPRINTLN("ESP ...... fehlende WLAN Verbindung. Es geht ohne WLAN weiter!");
-         DPRINT("WiFi.status(): ");
+         Log::Print();
+         Log::Print("ESP ...... fehlende WLAN Verbindung. Es geht ohne WLAN weiter!");
+         Log::Print("WiFi.status(): ");
          uint32_t status = WiFi.status();
-         DPRINT(status);
-         DPRINT(" --> ");
+         Log::Print(status);
+         Log::Print(" --> ");
          switch (status)
          {
          case WL_NO_SHIELD:
-            DPRINTLN("No shield");
+            Log::Print("No shield");
             break;
          case WL_IDLE_STATUS:
-            DPRINTLN("Idle status");
+            Log::Print("Idle status");
             break;
          case WL_NO_SSID_AVAIL:
-            DPRINTLN("No ssid avail");
+            Log::Print("No ssid avail");
             break;
          case WL_SCAN_COMPLETED:
-            DPRINTLN("Scan completed");
+            Log::Print("Scan completed");
             break;
          case WL_CONNECTED:
-            DPRINTLN("connected");
+            Log::Print("connected");
             break;
          case WL_CONNECT_FAILED:
-            DPRINTLN("connect faild");
+            Log::Print("connect faild");
             break;
          case WL_CONNECTION_LOST:
-            DPRINTLN("Connection lost");
+            Log::Print("Connection lost");
             break;
          case WL_DISCONNECTED:
-            DPRINTLN("disconnected");
+            Log::Print("disconnected");
             break;
          default:
-            DPRINTLN("undefined value");
+            Log::Print("undefined value");
             break;
          }
          bfIsConnected = false;
@@ -284,10 +288,10 @@ bool setup_wifi()
 
    if (bfIsConnected)
    {
-      DPRINTLN("");
-      DPRINTLN("WiFi connected");
-      DPRINT("IP address: ");
-      DPRINTLN(WiFi.localIP());
+      Log::Print("");
+      Log::Print("WiFi connected");
+      Log::Print("IP address: ");
+      Log::Print(WiFi.localIP());
    }
    return bfIsConnected;
 }
@@ -302,30 +306,30 @@ bool setup_mqtt()
 
    if (client.connected() == false)
    {
-      DPRINT("Verbinde zu Broker - ");
-      DPRINTLN(mqtt_server);
+      Log::Print("Verbinde zu Broker - ");
+      Log::Print(mqtt_server);
 
       client.setServer(mqtt_server, 1883);
       if (client.connect(Config::GetInstance()->GetWifiHostname(), String( String(Config::GetInstance()->GetWifiHostname()) + String("/STATUS")).c_str(), 0, true, "offline"))
       {
          // Set subscriber
-         DPRINT("Setze Subscriber - ");
+         Log::Print("Setze Subscriber - ");
          String temp = String(Config::GetInstance()->GetWifiHostname()) + String(cpcSubScriberSet);
-         DPRINTLN(temp);
+         Log::Print(temp);
          client.subscribe(temp.c_str());
          
-         DPRINT("Setze Subscriber - ");
+         Log::Print("Setze Subscriber - ");
          temp = String(Config::GetInstance()->GetWifiHostname()) + String(cpcSubScriberGet);
-         DPRINTLN(temp);
+         Log::Print(temp);
          client.subscribe(temp.c_str());
 
-         DPRINT("Setze Subscriber - ");
-         DPRINTLN(cpcSubScriberAlarmClock);
+         Log::Print("Setze Subscriber - ");
+         Log::Print(cpcSubScriberAlarmClock);
          client.subscribe(cpcSubScriberAlarmClock);
 
-         DPRINT("Setze Subscriber - ");
+         Log::Print("Setze Subscriber - ");
          temp = String(cpcSubScriberSetHomeProtokollServer) + String(Config::GetInstance()->GetWifiHostname());
-         DPRINTLN(temp);
+         Log::Print(temp);
          client.subscribe(temp.c_str());
 
          GetWifiStatus();
@@ -390,10 +394,10 @@ String hexStr(unsigned char *data, int len)
                               '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
    
-   DPRINT("hexStr: ");
-   DPRINT(data[0]);
-   DPRINT(data[1]);
-   DPRINTLN(data[2]);
+   // Log::Print("hexStr: ");
+   // Log::Print(data[0]);
+   // Log::Print(data[1]);
+   // Log::Print(data[2]);
 
    String s(len * 2, ' ');
    for (int i = 0; i < len; ++i) 
@@ -401,8 +405,8 @@ String hexStr(unsigned char *data, int len)
       s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
       s[2 * i + 1] = hexmap[data[i] & 0x0F];
    }
-   DPRINT("Str: ");
-   DPRINTLN(s);
+   // Log::Print("Str: ");
+   // Log::Print(s);
    return s;
 }
 
@@ -424,13 +428,13 @@ void setup()
    delay(500);
    Serial.begin(115200);
    Config::GetInstance();
+   Log::RegisterSendfunction(SendLogDataToMQTT);
    Log::ActivateLogging(true);
    Log::Print ("Starte Lichtwecker");
 
    InitIo();
-   //Log::RegisterSendfunction(SendLogDataToMQTT);
 
-   Log::RegisterSendfunction(SendLogDataToSerial);
+   //Log::RegisterSendfunction(SendLogDataToSerial);
 
 
    if (setup_wifi())
@@ -479,35 +483,35 @@ void WriteMqttDebugMsg(int32_t iConnectionStatus)
    switch (iConnectionStatus)
    {
    case -4:
-      DPRINTLN("MQTT_CONNECTION_TIMEOUT - the server didn't respond within the keepalive time");
+      Log::Print("MQTT_CONNECTION_TIMEOUT - the server didn't respond within the keepalive time");
       break;
    case -3:
-      DPRINTLN("MQTT_CONNECTION_LOST - the network connection was broken");
+      Log::Print("MQTT_CONNECTION_LOST - the network connection was broken");
       break;
    case -2:
-      DPRINTLN("MQTT_CONNECT_FAILED - the network connection failed");
+      Log::Print("MQTT_CONNECT_FAILED - the network connection failed");
       break;
    case -1:
-      DPRINTLN("MQTT_DISCONNECTED - the client is disconnected cleanly");
+      Log::Print("MQTT_DISCONNECTED - the client is disconnected cleanly");
       break;
    case 0:
-      DPRINTLN("MQTT_CONNECTED - the client is connected");
+      Log::Print("MQTT_CONNECTED - the client is connected");
       break;
    case 1:
-      DPRINTLN("MQTT_CONNECT_BAD_PROTOCOL - the server doesn't support the requested version of MQTT");
+      Log::Print("MQTT_CONNECT_BAD_PROTOCOL - the server doesn't support the requested version of MQTT");
       break;
       ;
    case 2:
-      DPRINTLN("MQTT_CONNECT_BAD_CLIENT_ID - the server rejected the client identifier");
+      Log::Print("MQTT_CONNECT_BAD_CLIENT_ID - the server rejected the client identifier");
       break;
    case 3:
-      DPRINTLN("MQTT_CONNECT_UNAVAILABLE - the server was unable to accept the connection");
+      Log::Print("MQTT_CONNECT_UNAVAILABLE - the server was unable to accept the connection");
       break;
    case 4:
-      DPRINTLN("MQTT_CONNECT_BAD_CREDENTIALS - the username/password were rejected");
+      Log::Print("MQTT_CONNECT_BAD_CREDENTIALS - the username/password were rejected");
       break;
    case 5:
-      DPRINTLN("MQTT_CONNECT_UNAUTHORIZED - the client was not authorized to connect");
+      Log::Print("MQTT_CONNECT_UNAUTHORIZED - the client was not authorized to connect");
       break;
    }
 }
@@ -523,14 +527,14 @@ void CheckMqttClientIsConnected()
    static const uint32_t uiMaxRetry = 15;
 
    iConnectionStatus = client.connected();
-   //DPRINTF("Check MQTT Client is Connected --> %d\r\n", iConnectionStatus);
+   //Log::PrintF("Check MQTT Client is Connected --> %d\r\n", iConnectionStatus);
 
    //   if (iOldConnectionStatus != iConnectionStatus)
    if (iConnectionStatus != MQTT_CONNECT_BAD_PROTOCOL) // Das ist richtig da wir eine andere Version als der Mosquittp Broker ausgeben
    {
-      DPRINTLN("no connection to MQTT broker...");
+      Log::Print("no connection to MQTT broker...");
       WriteMqttDebugMsg(iConnectionStatus);
-      DPRINTLN("Try MQTT reconnect...");
+      Log::Print("Try MQTT reconnect...");
 
       ++imqtt_retry;
 
@@ -539,7 +543,7 @@ void CheckMqttClientIsConnected()
       {
          if (imqtt_retry != 0)
          {
-            DPRINTLN("WiFi was successfully reconnected!");
+            Log::Print("WiFi was successfully reconnected!");
          }
 
          imqtt_retry = 0;
@@ -547,8 +551,8 @@ void CheckMqttClientIsConnected()
 
       if (imqtt_retry >= uiMaxRetry)
       {
-         DPRINTLN("Reboot because no MQTT connection");
-         ESP.restart();
+         Log::Print("Reboot because no MQTT connection");
+         //ESP.restart();
       }
    }
 }
@@ -568,7 +572,7 @@ bool CheckWifiIsConnected()
       wifi_retry++;
 //      SetLedRot();
       WiFi.disconnect();
-      DPRINTLN("WiFi not connected. Try to reconnect");
+      Log::Print("WiFi not connected. Try to reconnect");
       bfIsWifiConnected = setup_wifi();
 
       if (bfIsWifiConnected)
@@ -578,7 +582,7 @@ bool CheckWifiIsConnected()
    {
       if (wifi_retry != 0)
       {
-         DPRINTLN("WiFi was successfully reconnected!");
+         Log::Print("WiFi was successfully reconnected!");
   //       SetLedGruen();
       }
 
@@ -588,8 +592,8 @@ bool CheckWifiIsConnected()
 
    if (wifi_retry >= uiMaxRetry)
    {
-      DPRINTLN("Reboot because no WLAN connection");
-      ESP.restart();
+      Log::Print("Reboot because no WLAN connection");
+      //ESP.restart();
    }
 
    return bfIsWifiConnected;
@@ -608,8 +612,8 @@ void CyclicRestart()
    if (--Counter <= 0)
    {
       Counter = RestartTime;
-      Serial.println("ESP cyclic restart");
-      ESP.restart();
+      Log::Print("ESP cyclic restart");
+      //ESP.restart();
    }
 }
 
@@ -686,27 +690,26 @@ void loop()
 
       if( cTouchSensor1.IsShortPressed())
       {  
-         Log::Print("T1 short");
+         Log::Print("DimColor");
          cLigthAlarmClock::GetInstance()->DimColor();
       }
 
       if( cTouchSensor1.IsLongPressed())
+      {  
+         Log::Print("SetBrigthness");
          cLigthAlarmClock::GetInstance()->SetBrigthness(50);
-
+      }
       if( cTouchSensor2.IsShortPressed())
       {
-         //Log::Print("T2 short");
+         Log::Print("SetNextColor");
          cLigthAlarmClock::GetInstance()->SetNextColor();
       }  
 
       if( cTouchSensor2.IsLongPressed())
       {
-         //Log::Print("T2 long");
+         Log::Print("Stop");
          cLigthAlarmClock::GetInstance()->Stop();
       }  
-
-
-
    }
 
    // 1000ms Schleife
@@ -747,8 +750,8 @@ void loop()
    if (currentMillis >= next12HMin)
    {
       next12HMin = currentMillis + 720 * 60 * 1000; // alle 15 Min;
-      bfSendStatus = true;
       timeClientNTP.update();
+      bfSendStatus = true;
    }
 
 

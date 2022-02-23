@@ -171,7 +171,7 @@ private:
 #endif
 #ifdef TEICH      
 //   static const uint8_t m_ucNUM_LEDS = 150;
-   static const uint8_t m_ucNUM_LEDS = 100;
+   static const uint8_t m_ucNUM_LEDS = 16;
 #endif
 #ifdef LICHTWECKER      
    static const uint8_t m_ucNUM_LEDS = 120;
@@ -623,6 +623,7 @@ void cLigthAlarmClock::SetNextColor()
 void cLigthAlarmClock::DimColor()
 {
    m_uiActBrightness -= 10; 
+   Log::PrintF("Dim: %i", m_uiActBrightness);
    FastLED.setBrightness(m_uiActBrightness);
    FastLED.show();
 }
@@ -634,6 +635,7 @@ void cLigthAlarmClock::DimColor()
  */
 void cLigthAlarmClock::SetBrigthness(uint8_t uiBrigthness)
 {
+   Log::PrintF("SetBri: %i", uiBrigthness);
    FastLED.setBrightness(uiBrigthness);
    FastLED.show();
 }
