@@ -7,7 +7,6 @@
 
 
 
-
 /**
  * @brief class cTouchSensor 
  * 
@@ -15,42 +14,54 @@
 class cTouchSensor
 {
    public:
-  
+      typedef enum SensorState
+      {
+         Inactive = 0,
+         ShortPressed,
+         LongPressed
+
+      }SensorState_t;
+
    cTouchSensor(const uint32_t PinNumber, const uint32_t ThresholdPercent, const uint32_t AvgSize = 32);
    ~cTouchSensor();
 
    void Setup();
-   void Runtime(time_t actTime);
+   void Runtime();
    bool IsPressed() {return m_bfIsPressed;};
    bool IsShortPressed();
    bool IsLongPressed();
 
 private:
+   SensorState_t CheckPinIsTouched();
+   void CheckForMaxValue(uint32_t uivaluetouch);
 
 
 private:
    uint32_t m_uiPinNumber;
-   uint32_t m_uiTouchValueMax;
+   double m_uiTouchValueMax;
    CAverage<int32_t> m_cAvgTouch;
    CAverage<int32_t> m_cAvgTouchMax;
    bool m_bfIsPressed;
    uint32_t m_uiThresholdPercent;
-   time_t m_uiTimePressed;
+   time_t m_uiStartTimePressed;
    bool m_bfIsShortPressed;
    bool m_bfIsLongPressed;
    uint32_t m_uiLastCheckTouchsensorMax;
+   uint32_t m_uiDelayReadLastTouchPin;
+   uint32_t m_actTime;
+   SensorState_t m_actSensorState;
 
 
 };
-
 
 
 /**
  * @brief Construct a new c Touch Sensor::c Touch Sensor object
  * 
  */
-cTouchSensor::cTouchSensor( const uint32_t PinNumber, const uint32_t ThresholdPercent, const uint32_t AvgSize ) : m_cAvgTouch(AvgSize,100), m_cAvgTouchMax(64,100), 
-   m_uiPinNumber(PinNumber), m_uiTouchValueMax(0), m_bfIsPressed(false), m_uiThresholdPercent(ThresholdPercent), m_bfIsShortPressed(false), m_bfIsLongPressed(false)
+cTouchSensor::cTouchSensor( const uint32_t PinNumber, const uint32_t ThresholdPercent, const uint32_t AvgSize ) : m_cAvgTouch(AvgSize,10), m_cAvgTouchMax(64,100), 
+   m_uiPinNumber(PinNumber), m_uiTouchValueMax(0), m_bfIsPressed(false), m_uiThresholdPercent(ThresholdPercent), m_bfIsShortPressed(false), m_bfIsLongPressed(false),
+   m_uiDelayReadLastTouchPin(0), m_actTime(0), m_actSensorState(Inactive)
 {
 
 }
@@ -70,77 +81,136 @@ cTouchSensor::~cTouchSensor()
  */
 void cTouchSensor::Setup()
 {
-   m_cAvgTouch.InitBuffer(touchRead(m_uiPinNumber));
-   m_cAvgTouchMax.InitBuffer(touchRead(m_uiPinNumber));
+   uint32_t uiTouchValue = touchRead(m_uiPinNumber);
+   Log::PrintF("%i:          Init TouchValue: %i", m_uiPinNumber, uiTouchValue);
+   m_cAvgTouch.InitBuffer(uiTouchValue);
+   m_cAvgTouchMax.InitBuffer(uiTouchValue);
 }
 
-
 /**
- * @brief Runtime
  * 
- */
-void cTouchSensor::Runtime(time_t actTime)
+*/
+cTouchSensor::SensorState_t cTouchSensor::CheckPinIsTouched()
 {
-   static time_t lastTime = 0;
-
-   uint32_t uivaluetouch = touchRead(m_uiPinNumber);
-
-   m_cAvgTouch.Add(uivaluetouch);
-   
-   
-   if( actTime > (m_uiLastCheckTouchsensorMax + 15000))
-   {
-      static uint32_t uiLastTouchValueMax = 0;
-      m_uiLastCheckTouchsensorMax = actTime;
-      m_cAvgTouchMax.Add(uivaluetouch);
-
-      m_uiTouchValueMax = m_cAvgTouchMax.Get() ;
-   
-      if( uiLastTouchValueMax != m_uiTouchValueMax )
-         Log::PrintF("%i:          new Max: %i", m_uiPinNumber, m_uiTouchValueMax);
-
-   }
-
-
-   uint32_t uiAvg = m_cAvgTouch.Get();
-   double threshold = m_uiTouchValueMax - (m_uiTouchValueMax / 100.0 * m_uiThresholdPercent);
+   // Get max Value
+   m_uiTouchValueMax = m_cAvgTouchMax.Get();
+   // Get act Value
+   double uiAvg = m_cAvgTouch.Get();
+   // calc threshold
+   double threshold = m_uiTouchValueMax - (m_uiTouchValueMax / 100.0f * m_uiThresholdPercent);
+   uint32_t uiPressTime = 0;
 
    if (uiAvg <= threshold)
    {
       if( m_bfIsPressed == false)
       {
          // First entry
-         m_uiTimePressed = actTime;
+         m_uiStartTimePressed = m_actTime;
+         m_bfIsPressed = true;
+         Log::PrintF("Pressed: %i:          threshold: %2.1f              Avg: %2.1f", m_uiPinNumber, threshold, uiAvg);
       }
-      m_bfIsPressed = true;
    }
    else
    {
       if( m_bfIsPressed == true)
-      {
-         // First entry
-         uint32_t uiPressTime = actTime - m_uiTimePressed; 
+         Log::PrintF("Reset: %i:          threshold: %2.1f              Avg: %2.1f", m_uiPinNumber, threshold, uiAvg);
 
-         //Log::PrintF("%i:          Time: %i", m_uiPinNumber, uiPressTime);
+      m_bfIsPressed = false;
+      m_actSensorState = Inactive;
+      m_uiStartTimePressed = m_actTime;
+   }
 
+   uiPressTime = m_actTime - m_uiStartTimePressed; 
+
+   switch (m_actSensorState)
+   {
+      case Inactive:
          if( uiPressTime > 50 )
          { // minimum time is 50ms
-
             if( uiPressTime < 500 )
             { // short time
                m_bfIsShortPressed = true;
-            }
-            else if( uiPressTime < 2500 )
-            { // long time time
-               m_bfIsLongPressed = true;
+               m_actSensorState = ShortPressed;
+               Log::PrintF("Short: %i:          threshold: %2.1f              Avg: %2.1f", m_uiPinNumber, threshold, uiAvg);
             }
          }
-
-     }
-      m_bfIsPressed = false;
-   }
+         break;
    
-   lastTime = actTime;
+      case ShortPressed:
+         if( uiPressTime > 2500 )
+         { // long time time
+            m_bfIsLongPressed = true;
+            m_actSensorState = LongPressed;
+            Log::PrintF("Long: %i:          threshold: %2.1f              Avg: %2.1f", m_uiPinNumber, threshold, uiAvg);
+         }
+         break;
+
+      case LongPressed:
+         /* code */
+         break;
+
+      default:
+         m_bfIsPressed = false;
+         m_actSensorState = Inactive;
+         break;
+   }   
+
+
+
+   return m_actSensorState;
+}
+
+/**
+ * 
+*/
+void cTouchSensor::CheckForMaxValue(uint32_t uivaluetouch)
+{
+   // check only 15 seconds
+   if( m_actTime > (m_uiLastCheckTouchsensorMax + 15000))
+   {
+      static uint32_t uiLastTouchValueMax = 0;
+      m_uiLastCheckTouchsensorMax = m_actTime;
+      
+      if( uivaluetouch != 0 )
+         m_cAvgTouchMax.Add(uivaluetouch);
+   
+      m_uiTouchValueMax = m_cAvgTouchMax.Get() ;
+      if( uiLastTouchValueMax != m_uiTouchValueMax )
+      {
+         uiLastTouchValueMax = m_uiTouchValueMax;
+         Log::PrintF("%i:          new Max: %f", m_uiPinNumber, m_uiTouchValueMax);
+      }
+   }
+}
+
+/**
+ * @brief Runtime
+ * 
+ */
+void cTouchSensor::Runtime()
+{
+   //static time_t lastTime = 0;
+   uint32_t uivaluetouch = 0;
+   m_actTime = millis();
+
+   // we read every 50 milli sec the value of the pin
+   if( m_actTime > ( m_uiDelayReadLastTouchPin + 5))
+   {
+      m_uiDelayReadLastTouchPin = m_actTime; 
+      
+      uivaluetouch = touchRead(m_uiPinNumber);
+      //Log::PrintF("%i:          act: %i", m_uiPinNumber, uivaluetouch);
+      m_cAvgTouch.Add(uivaluetouch); // fill pin avg
+   }
+
+   SensorState_t PinState = CheckPinIsTouched();
+
+   if( PinState == Inactive )
+   {  
+      uivaluetouch = touchRead(m_uiPinNumber);
+      CheckForMaxValue(uivaluetouch);
+   }
+
 }
 
 

@@ -38,8 +38,8 @@ WiFiUDP ntpUDP;
 const long utcOffsetInSeconds = 3600 * 2; // UTC+2
 NTPClient timeClientNTP(ntpUDP, "fritz.box", utcOffsetInSeconds, 3600);
 static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
-cTouchSensor cTouchSensor1(TOUCH_PIN_1, 25);
-cTouchSensor cTouchSensor2(TOUCH_PIN_2, 25);
+cTouchSensor cTouchSensor1(TOUCH_PIN_1, 20);
+cTouchSensor cTouchSensor2(TOUCH_PIN_2, 20);
 
 //#define BMP280_I2C_ADDRESS  0x76
 //Adafruit_BME280 bmp; // use I2C interface
@@ -58,9 +58,9 @@ void SendLogDataToMQTT( const String & msg )
 {
    Publish("Log", msg);
 
-#ifdef TEICH
-   SendLogDataToSerial(msg);
-#endif
+// #ifdef MAX
+//    SendLogDataToSerial(msg);
+// #endif
 }
 
 
@@ -69,7 +69,7 @@ void SendLogDataToMQTT( const String & msg )
  */
 void SendLogDataToSerial( const String & msg )
 {
-   Log::Print(msg);
+   Serial.println(msg);
 }
 
 
@@ -146,7 +146,7 @@ void callbackMqtt(char *topic, byte *payload, unsigned int payload_length)
          if (strMsg.indexOf("SIMULATION") != std::string::npos)
          {
             cLigthAlarmClock::GetInstance()->StartSimulation();
-            Log::ActivateLogging(true);
+            //Log::ActivateLogging(true);
          }
       }   
       else if( strTopic.indexOf("stop") != std::string::npos )
@@ -230,9 +230,12 @@ bool setup_wifi()
    Log::Print("Connecting to ");
    Log::Print(Config::GetInstance()->GetWifiSsid());
 
+   WiFi.disconnect();
+   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);  // This is a MUST!
    WiFi.mode(WIFI_STA); // nur als client arbeiten
    WiFi.hostname(Config::GetInstance()->GetWifiHostname());
    WiFi.begin(Config::GetInstance()->GetWifiSsid(), Config::GetInstance()->GetWifiSPassword());
+   
    Log::Print("Set Hostname: ");
    Log::Print(Config::GetInstance()->GetWifiHostname());
 
@@ -425,16 +428,16 @@ void PublishRgbValue( CRGB rgbcolor )
  */
 void setup()
 {
-   delay(500);
    Serial.begin(115200);
    Config::GetInstance();
-   Log::RegisterSendfunction(SendLogDataToMQTT);
+//   Log::RegisterSendfunction(SendLogDataToMQTT);
+   Log::RegisterSendfunction(SendLogDataToSerial);
    Log::ActivateLogging(true);
+   delay(100);
    Log::Print ("Starte Lichtwecker");
 
    InitIo();
 
-   //Log::RegisterSendfunction(SendLogDataToSerial);
 
 
    if (setup_wifi())
@@ -757,9 +760,9 @@ void loop()
 
    client.loop();
    ArduinoOTA.handle();
-   timeClientNTP.update();
-   cLigthAlarmClock::GetInstance()->Runtime(timeClientNTP.getEpochTime());
-   cTouchSensor1.Runtime(currentMillis);
-   cTouchSensor2.Runtime(currentMillis);
+   // timeClientNTP.update();
+   // cLigthAlarmClock::GetInstance()->Runtime(timeClientNTP.getEpochTime());
+   cTouchSensor1.Runtime();
+   cTouchSensor2.Runtime();
 
 }

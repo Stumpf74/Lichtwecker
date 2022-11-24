@@ -164,7 +164,7 @@ private:
 
    static const uint8_t m_ucLED_PIN = 16; // --> IO16
 #ifdef MAX      
-   static const uint8_t m_ucNUM_LEDS = 69;
+   static const uint8_t m_ucNUM_LEDS = 40;
 #endif
 #ifdef AMELIE      
    static const uint8_t m_ucNUM_LEDS = 29;
@@ -193,7 +193,7 @@ private:
    bool m_IsSunriseEnded;
    uint32_t m_uiSunriseIndex;
    uint32_t m_uiAlarmOffCount;
-   bool bfIsSimaulationActive;
+   bool m_bfIsSimaulationActive;
    void (*m_pFuncRgbCallback)(CRGB);
 
    CRGBPalette16 m_currentPalette;
@@ -280,7 +280,7 @@ cLigthAlarmClock *cLigthAlarmClock::m_ptrInstance = nullptr;
  * 
  */
 cLigthAlarmClock::cLigthAlarmClock() : m_uiLigthStepDelay(0), m_IsSunriseStarted(false), m_uiSunriseIndex(0), m_uiSunriseTimeSpan(1800),m_uiSunriseDelay(0),
-   m_IsSunriseEnded(false), m_uiAlarmOffTime(3600), m_uiAlarmOffCount(0), m_pFuncRgbCallback(NULL), bfIsSimaulationActive(false), m_ColorIndex(0), m_uiActBrightness(255)
+   m_IsSunriseEnded(false), m_uiAlarmOffTime(3600), m_uiAlarmOffCount(0), m_pFuncRgbCallback(NULL), m_bfIsSimaulationActive(false), m_ColorIndex(0), m_uiActBrightness(255)
 {
    m_currentPalette = RainbowColors_p;
    m_currentBlending = NOBLEND;
@@ -333,7 +333,8 @@ void cLigthAlarmClock::Stop()
    LedsOff();
    m_IsSunriseStarted = false;
    m_IsSunriseEnded = false;
-   bfIsSimaulationActive = false;
+   m_bfIsSimaulationActive = false;
+   m_ColorIndex = 0;
 
 }
 
@@ -343,7 +344,7 @@ void cLigthAlarmClock::StartLigthSequenz()
    m_uiSunriseDelay = m_uiLigthStepDelay;
    m_IsSunriseEnded = false;
    m_uiAlarmOffCount = 0;
-   bfIsSimaulationActive = false;
+   m_bfIsSimaulationActive = false;
 }
 
 void cLigthAlarmClock::StartSimulation()
@@ -351,7 +352,7 @@ void cLigthAlarmClock::StartSimulation()
    LedsOff();
    m_IsSunriseStarted = false;
    m_IsSunriseEnded = false;
-   bfIsSimaulationActive = true;
+   m_bfIsSimaulationActive = true;
 }
 
 
@@ -474,7 +475,7 @@ void cLigthAlarmClock::Runtime(time_t actTime)
 //   static uint32_t previousMillis1000ms = 1000;
    static time_t lastTime = 0;
 
-   if(bfIsSimaulationActive)
+   if(m_bfIsSimaulationActive)
    {
       Simulation(actTime);
    }
@@ -608,11 +609,20 @@ void cLigthAlarmClock::Simulation(time_t actTime)
  */
 void cLigthAlarmClock::SetNextColor()
 {
-   m_ColorIndex += 1;
-   FillSolid_X(RainbowColors_p[m_ColorIndex]);
-   if( m_ColorIndex >= 15 )
-      m_ColorIndex = 0;
+   if( m_ColorIndex == 0 )
+   {
+      //FillSolid_X(CRGB::White);
+      FillSolid_X(CRGB(255,255,200)); // Start Licht! Für Hausaufgaben
 
+      m_ColorIndex += 1;
+   }
+   else
+   {
+      FillSolid_X(RainbowColors_p[m_ColorIndex-1]);
+      m_ColorIndex += 1;
+      if( m_ColorIndex > 16 )
+         m_ColorIndex = 0;
+   }
    FastLED.show();
 }
 
