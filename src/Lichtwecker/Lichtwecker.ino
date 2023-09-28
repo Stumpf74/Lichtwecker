@@ -8,13 +8,14 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
 
-
 #include <NTPClient.h>
 #include <ArduinoOTA.h>
 #include <WiFiUdp.h>
 #include <string.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
+#include <Adafruit_BME280.h>
+#include <Adafruit_Sensor.h>
 #include "Debug.h"
 #include "AlarmTime.h"
 #include "Config.h"
@@ -38,16 +39,20 @@ WiFiUDP ntpUDP;
 const long utcOffsetInSeconds = 3600 * 2; // UTC+2
 NTPClient timeClientNTP(ntpUDP, "fritz.box", utcOffsetInSeconds, 3600);
 static const char daysOfTheWeek[7][5] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
+
+#ifndef LICHTWECKER   
 cTouchSensor cTouchSensor1(TOUCH_PIN_1, 20);
 cTouchSensor cTouchSensor2(TOUCH_PIN_2, 20);
+#endif
 
-//#define BMP280_I2C_ADDRESS  0x76
-//Adafruit_BME280 bmp; // use I2C interface
-//CAverage<float> cAvgTemperature(16, 0.0);
-//CAverage<uint16_t> cAvgPressure(16, 0);
-//Adafruit_Sensor *bmp_temp = bmp.getTemperatureSensor();
-//Adafruit_Sensor *bmp_pressure = bmp.getPressureSensor();
-
+#ifdef LICHTWECKER   
+#define BMP280_I2C_ADDRESS  0x76
+Adafruit_BME280 bmp; // use I2C interface
+CAverage<float> cAvgTemperature(16, 0.0);
+CAverage<uint16_t> cAvgPressure(16, 0);
+Adafruit_Sensor *bmp_temp = bmp.getTemperatureSensor();
+Adafruit_Sensor *bmp_pressure = bmp.getPressureSensor();
+#endif
 
 /**
  * @brief 
@@ -239,15 +244,15 @@ bool setup_wifi()
    Log::Print("Set Hostname: ");
    Log::Print(Config::GetInstance()->GetWifiHostname());
 
-   uint32_t uiWaitTimeout = 20; // wenn wir nach 10s keine Verbindung haben passt was nicht
+   static uint32_t uiWaitTimeout = 20; // wenn wir nach 10s keine Verbindung haben passt was nicht
    bool bfIsConnected = true;
 
-   while (WiFi.status() != WL_CONNECTED)
+   if (WiFi.status() != WL_CONNECTED)
    {
-      delay(500);
       Log::Print(".");
       if (--uiWaitTimeout == 0)
       {
+         uiWaitTimeout = 20;
          Log::Print();
          Log::Print("ESP ...... fehlende WLAN Verbindung. Es geht ohne WLAN weiter!");
          Log::Print("WiFi.status(): ");
@@ -285,7 +290,6 @@ bool setup_wifi()
             break;
          }
          bfIsConnected = false;
-         break;
       }
    }
 
@@ -430,8 +434,8 @@ void setup()
 {
    Serial.begin(115200);
    Config::GetInstance();
-//   Log::RegisterSendfunction(SendLogDataToMQTT);
-   Log::RegisterSendfunction(SendLogDataToSerial);
+   Log::RegisterSendfunction(SendLogDataToMQTT);
+//   Log::RegisterSendfunction(SendLogDataToSerial);
    Log::ActivateLogging(true);
    delay(100);
    Log::Print ("Starte Lichtwecker");
@@ -454,9 +458,10 @@ void setup()
    cLigthAlarmClock::GetInstance()->Setup();
    cLigthAlarmClock::GetInstance()->RegisterRgbChangedCalback(&PublishRgbValue);
 
+#ifndef LICHTWECKER   
    cTouchSensor1.Setup();
    cTouchSensor2.Setup();
-
+#endif
 
    //bmp.begin(BMP280_I2C_ADDRESS);
    // while (!bmp.begin(0x76)) {
@@ -596,7 +601,7 @@ bool CheckWifiIsConnected()
    if (wifi_retry >= uiMaxRetry)
    {
       Log::Print("Reboot because no WLAN connection");
-      //ESP.restart();
+      ESP.restart();
    }
 
    return bfIsWifiConnected;
@@ -691,6 +696,7 @@ void loop()
    {
       previousMillis10ms = currentMillis;
 
+#ifndef LICHTWECKER   
       if( cTouchSensor1.IsShortPressed())
       {  
          Log::Print("DimColor");
@@ -713,6 +719,7 @@ void loop()
          Log::Print("Stop");
          cLigthAlarmClock::GetInstance()->Stop();
       }  
+#endif      
    }
 
    // 1000ms Schleife
@@ -762,7 +769,8 @@ void loop()
    ArduinoOTA.handle();
    // timeClientNTP.update();
    // cLigthAlarmClock::GetInstance()->Runtime(timeClientNTP.getEpochTime());
+#ifndef LICHTWECKER   
    cTouchSensor1.Runtime();
    cTouchSensor2.Runtime();
-
+#endif
 }
