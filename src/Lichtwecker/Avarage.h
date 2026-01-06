@@ -1,6 +1,6 @@
 //: ////////////////////////////////////////////////////////////////////////////
 //+
-//+       (C) ITF-EDV Fr�schl GmbH, Hauserbachstr. 8, 93194 Walderbach
+//+       (C) ITF-EDV Froeschl GmbH, Hauserbachstr. 8, 93194 Walderbach
 //+
 //+ ////////////////////////////////////////////////////////////////////////////
 //+
@@ -15,6 +15,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //                      definements and global variables
 ////////////////////////////////////////////////////////////////////////////////
+#include <cstdint>
+#include <cstddef>
 
 ////////////////////////////////////////////////////////////////////////////////
 //                             forward declaration
@@ -31,11 +33,11 @@ public:
    //                           constructors & destructor
    ////////////////////////////////////////////////////////////////////////////////
 
-   CAverage(uint32_t ui_buffer_size, T InitValueBuffer)
+   CAverage(uint32_t p_buffer_size, T InitValueBuffer)
    {
-      m_ptrausData = new T[ui_buffer_size];
+      m_ptrausData = new T[p_buffer_size];
       m_ptrWriteData = m_ptrausData;
-      m_uiBufferSize = ui_buffer_size;
+      m_uiBufferSize = p_buffer_size;
       InitBuffer(InitValueBuffer);
    }
 

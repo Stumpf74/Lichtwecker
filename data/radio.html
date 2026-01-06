@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lichtwecker - Radiosender</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; font-size: 0.9em; color: #003366; }
+        td input { width: 95%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; padding: 8px 12px; border-radius: 4px; }
+        button:hover { background-color: #0056b3; }
+        .btn-delete { background-color: #dc3545; }
+        .btn-delete:hover { background-color: #c82333; }
+        .btn-add { background-color: #28a745; margin-top: 15px; }
+        .btn-add:hover { background-color: #218838; }
+        .status-message { margin-top: 15px; padding: 10px; border-radius: 5px; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .nav-link { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
+        .nav-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Radiosender verwalten</h1>
+        
+        <table>
+            <colgroup>
+                <col id="col-name"> <!-- Spalte für den Namen -->
+                <col id="col-url">  <!-- Spalte für die URL -->
+                <col style="width: 100px;"> <!-- Spalte für die Lautstärke -->
+                <col style="width: 110px;"> <!-- Spalte für die Aktion -->
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>URL</th>
+                    <th>Lautstärke</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+            <tbody id="stations-table-body">
+                <!-- Zeilen werden dynamisch per JavaScript eingefügt -->
+            </tbody>
+        </table>
+
+        <button class="btn-add" onclick="addStationRow()">Neuen Sender hinzufügen</button>
+
+        <hr style="margin: 20px 0;">
+
+        <button onclick="saveStations()">Alle Änderungen speichern</button>
+        <div id="status-message" class="status-message"></div>
+
+        <a href="/index.html" class="nav-link">Zurück zu den Einstellungen</a>
+    </div>
+
+    <script>
+        // Lädt die Senderliste vom Server und füllt die Tabelle
+        async function loadStations() {
+            try {
+                const response = await fetch('/api/radiostations');
+                if (!response.ok) throw new Error('Netzwerk-Antwort war nicht ok.');
+                const stations = await response.json();
+                
+                const tableBody = document.getElementById('stations-table-body');
+                tableBody.innerHTML = ''; // Leeren für den Fall eines Neuladens
+
+                stations.forEach((station, index) => {
+                    const row = createStationRow(station.name, station.url, station.volume);
+                    tableBody.appendChild(row);
+                });
+
+                // Finde die maximale Länge des Sendernamens
+                let maxLength = 0;
+                stations.forEach(station => {
+                    if (station.name.length > maxLength) {
+                        maxLength = station.name.length;
+                    }
+                });
+
+                // Setze die Breite der Namensspalte.
+                // 'ch' ist eine Einheit, die ungefähr der Breite des Zeichens '0' entspricht.
+                // Wir fügen einen kleinen Puffer hinzu.
+                const nameCol = document.getElementById('col-name');
+                nameCol.style.width = (maxLength + 3) + 'ch';
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Sender:', error);
+                showStatus('Fehler: Sender konnten nicht geladen werden.', 'error');
+            }
+        }
+
+        // Erstellt eine neue Tabellenzeile für einen Sender
+        function createStationRow(name = '', url = '', volume = 75) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="station-name" value="${escapeHTML(name)}"></td>
+                <td><input type="text" class="station-url" value="${escapeHTML(url)}"></td>
+                <td><input type="number" class="station-volume" value="${volume}" min="0" max="100"></td>
+                <td><button class="btn-delete" onclick="deleteRow(this)">Löschen</button></td>
+            `;
+            return row;
+        }
+
+        // Fügt eine leere Zeile zur Tabelle hinzu
+        function addStationRow() {
+            const tableBody = document.getElementById('stations-table-body');
+            const newRow = createStationRow();
+            tableBody.appendChild(newRow);
+        }
+
+        // Löscht eine Zeile aus der Tabelle
+        function deleteRow(button) {
+            const row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+        }
+
+        // Speichert die komplette Senderliste auf dem Server
+        async function saveStations() {
+            const tableBody = document.getElementById('stations-table-body');
+            const rows = tableBody.getElementsByTagName('tr');
+            const stations = [];
+
+            for (let i = 0; i < rows.length; i++) {
+                const nameInput = rows[i].querySelector('.station-name');
+                const urlInput = rows[i].querySelector('.station-url');
+                const volumeInput = rows[i].querySelector('.station-volume');
+
+                const name = nameInput.value.trim();
+                const url = urlInput.value.trim();
+                const volume = parseInt(volumeInput.value, 10);
+
+                if (name && url) {
+                    stations.push({ name, url, volume });
+                }
+            }
+
+            try {
+                const response = await fetch('/api/radiostations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(stations)
+                });
+
+                if (response.ok) {
+                    showStatus('Senderliste erfolgreich gespeichert!', 'success');
+                } else {
+                    throw new Error('Server hat mit einem Fehler geantwortet.');
+                }
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                showStatus('Fehler beim Speichern der Senderliste!', 'error');
+            }
+        }
+
+        // Zeigt eine Statusmeldung an
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message ${type}`;
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 4000);
+        }
+
+        // Hilfsfunktion zum Escapen von HTML-Sonderzeichen
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        // Lade die Sender, wenn die Seite geladen wird
+        window.onload = loadStations;
+    </script>
+</body>
+</html>

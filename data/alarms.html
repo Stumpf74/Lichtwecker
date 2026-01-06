@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lichtwecker - Wecker-Einstellungen</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; }
+        .alarm-card { border: 1px solid #0b0909; border-radius: 8px; padding: 15px; margin-bottom: 20px; background-color: #fafafa; }
+        .alarm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="time"], input[type="range"] { padding: 0; }
+        input[type="color"] { width: 60px; height: 40px; border: none; background: none; padding: 0; cursor: pointer; }
+        button { padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: auto; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; width: auto; padding: 10px 15px; }
+        button:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid #ddd; vertical-align: middle; }
+        th { background-color: #f2f2f2; font-size: 0.9em; color: #003366; }
+        td { font-size: 0.9em; }
+        td .days-group { gap: 4px; }
+        td .day-label { padding: 4px 8px; font-size: 0.85em; color: #003366; }
+        td input[type="time"] { width: 90px; }
+        td .action-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+        td .status-message { margin: 0; padding: 5px; font-size: 0.8em; }
+        .toggle-switch { display: inline-block; position: relative; width: 40px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2196F3; }
+        input:checked + .slider:before { transform: translateX(16px); }
+        .days-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .day-label { display: flex; align-items: center; gap: 5px; background-color: #e9e9e9; padding: 5px 10px; border-radius: 15px; cursor: pointer; user-select: none; }
+        .day-label input { display: none; }
+        .day-label input:checked + span { font-weight: bold; color: #007bff; }
+        .status-message { margin-top: 10px; padding: 10px; border-radius: 5px; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .nav-link { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
+        .nav-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<style>
+    .status-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 5px 15px;
+        align-items: center;
+    }
+    .status-grid strong {
+        text-align: right;
+        color: #555;
+    }
+</style>
+<body>
+    <div class="container">
+        <h2>Manuelle Lichtsteuerung</h2>
+        <div class="alarm-card">
+            <div class="form-group">
+                <label for="static-color" style="margin:0;">Farbe:</label>
+                <input type="color" id="static-color" value="#FFFF00">
+            </div>
+            <div class="form-group">
+                <label for="static-brightness">Helligkeit:</label>
+                <input type="range" id="static-brightness" min="0" max="255" value="128" style="width: 100%;">
+            </div>
+            <button onclick="setStaticLight()">Licht setzen</button>
+            <button onclick="turnLightOff()" style="background-color: #dc3545;">Licht ausschalten</button>
+            <div id="light-status" class="status-message"></div>
+        </div>
+        <h1>Wecker-Einstellungen</h1>
+        <div class="alarm-card" style="padding: 10px 20px;">
+             <table>
+                <thead>
+                    <tr>
+                        <th>Aktiv</th>
+                        <th>Sonnenaufgang</th>
+                        <th>Uhrzeit</th>
+                        <th>Tage</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody id="alarms-table-body"></tbody>
+             </table>
+         </div>
+
+        <h2>Systemstatus</h2>
+        <div class="alarm-card">
+            <div id="status-container" class="status-grid">
+                <strong>Version:</strong> <span id="status-version">...</span>
+                <strong>Build:</strong> <span id="status-build">...</span>
+                <strong>Hostname:</strong> <span id="status-hostname">...</span>
+                <strong>IP-Adresse:</strong> <span id="status-ip">...</span>
+                <strong>WLAN (SSID):</strong> <span id="status-ssid">...</span>
+                <strong>Signal (RSSI):</strong> <span id="status-rssi">...</span>
+                <strong>Systemzeit:</strong> <span id="status-time">...</span>
+                <strong>Laufzeit:</strong> <span id="status-uptime">...</span>
+                <strong>Sonnenaufgang:</strong> <span id="status-sunrise">...</span>
+                <strong>Sonnenhöchststand:</strong> <span id="status-transit">...</span>
+                <strong>Sonnenuntergang:</strong> <span id="status-sunset">...</span>
+            </div>
+        </div>
+
+        <a href="/" class="nav-link">Zurück zur Hauptseite</a>
+    </div>
+
+    <script>
+        const dayNames = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+        // --- Status-Update-Funktion ---
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) return;
+                const status = await response.json();
+
+                document.getElementById('status-version').textContent = status.version;
+                document.getElementById('status-build').textContent = status.build;
+                document.getElementById('status-hostname').textContent = status.hostname;
+                document.getElementById('status-ip').textContent = status.ip;
+                document.getElementById('status-ssid').textContent = status.ssid;
+                document.getElementById('status-rssi').textContent = `${status.rssi} dBm`;
+                document.getElementById('status-time').textContent = status.time;
+                document.getElementById('status-uptime').textContent = status.uptime;
+                document.getElementById('status-sunrise').textContent = status.sunrise;
+                document.getElementById('status-transit').textContent = status.transit;
+                document.getElementById('status-sunset').textContent = status.sunset;
+            } catch (error) {
+                console.error('Fehler beim Abrufen des Status:', error);
+            }
+        }
+
+        // Lädt die Wecker-Einstellungen vom Server und baut die Seite auf
+        async function loadAlarms() {
+            try {
+                const response = await fetch('/api/alarms');
+                if (!response.ok) throw new Error('Netzwerk-Antwort war nicht ok.');
+                const alarms = await response.json();
+                
+                const tableBody = document.getElementById('alarms-table-body');
+                tableBody.innerHTML = ''; // Leeren für den Fall eines Neuladens
+
+                alarms.forEach((alarm, index) => {
+                    const row = document.createElement('tr');
+                    row.id = `alarm-row-${index}`;
+
+                    const isEnabled = alarm.enabled ? 'checked' : '';
+                    const enabledHtml = `
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="enabled-${index}" ${isEnabled}>
+                            <span class="slider"></span>
+                        </label>`;
+
+                    const isSunriseEnabled = alarm.sunriseEnabled ? 'checked' : '';
+                    const sunriseEnabledHtml = `
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sunriseEnabled-${index}" ${isSunriseEnabled}>
+                            <span class="slider"></span>
+                        </label>`;
+
+                    let daysHtml = '';
+                    for (let i = 0; i < 7; i++) {
+                        const isChecked = (alarm.days & (1 << i)) ? 'checked' : '';
+                        daysHtml += `
+                            <label class="day-label">
+                                <input type="checkbox" name="day-${index}" value="${1 << i}" ${isChecked}>
+                                <span>${dayNames[i]}</span>
+                            </label>`;
+                    }
+
+                    const alarmTime = `${String(alarm.hour).padStart(2, '0')}:${String(alarm.minute).padStart(2, '0')}`;
+
+                    row.innerHTML = `
+                        <td>${enabledHtml}</td>
+                        <td>${sunriseEnabledHtml}</td>
+                        <td><input type="time" id="time-${index}" value="${alarmTime}"></td>
+                        <td><div class="days-group">${daysHtml}</div></td>
+                        <td>
+                            <div class="action-cell">
+                                <button onclick="saveAlarm(${index})">Speichern</button>
+                                <div id="status-${index}" class="status-message"></div>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Fehler beim Laden der Wecker:', error);
+                document.getElementById('alarms-container').innerHTML = '<p class="error">Fehler: Wecker-Daten konnten nicht geladen werden.</p>';
+            }
+        }
+
+        // Speichert die Einstellungen für einen einzelnen Wecker
+        async function saveAlarm(index) {
+            const enabled = document.getElementById(`enabled-${index}`).checked;
+            const sunriseEnabled = document.getElementById(`sunriseEnabled-${index}`).checked;
+            const timeValue = document.getElementById(`time-${index}`).value;
+            const [hour, minute] = timeValue.split(':').map(Number);
+
+            let days = 0;
+            document.querySelectorAll(`input[name="day-${index}"]:checked`).forEach(cb => {
+                days |= parseInt(cb.value);
+            });
+
+            const data = { index, enabled, sunriseEnabled, hour, minute, days };
+            const statusDiv = document.getElementById(`status-${index}`);
+
+            try {
+                const response = await fetch('/api/setalarm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    statusDiv.textContent = 'Gespeichert!';
+                    statusDiv.className = 'status-message success';
+                } else {
+                    throw new Error('Server hat mit einem Fehler geantwortet.');
+                }
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                statusDiv.textContent = 'Fehler beim Speichern!';
+                statusDiv.className = 'status-message error';
+            }
+            
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        }
+
+        // Setzt eine statische Farbe und Helligkeit
+        async function setStaticLight() {
+            const colorHex = document.getElementById('static-color').value; // z.B. "#RRGGBB"
+            const brightness = document.getElementById('static-brightness').value;
+
+            const data = { color: colorHex, brightness: parseInt(brightness) };
+            const statusDiv = document.getElementById('light-status');
+
+            try {
+                const response = await fetch('/api/setcolor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('Server-Antwort war nicht ok.');
+                
+                statusDiv.textContent = 'Licht gesetzt!';
+                statusDiv.className = 'status-message success';
+            } catch (error) {
+                console.error('Fehler beim Setzen des Lichts:', error);
+                statusDiv.textContent = 'Fehler beim Setzen des Lichts!';
+                statusDiv.className = 'status-message error';
+            }
+
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        }
+
+        // Schaltet das Licht aus
+        async function turnLightOff() {
+            const statusDiv = document.getElementById('light-status');
+            try {
+                const response = await fetch('/api/lightoff', { method: 'POST' });
+                if (!response.ok) throw new Error('Server-Antwort war nicht ok.');
+
+                statusDiv.textContent = 'Licht ausgeschaltet!';
+                statusDiv.className = 'status-message success';
+            } catch (error) {
+                console.error('Fehler beim Ausschalten des Lichts:', error);
+                statusDiv.textContent = 'Fehler beim Ausschalten!';
+                statusDiv.className = 'status-message error';
+            }
+
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        }
+
+        // Lade die Wecker, wenn die Seite geladen wird
+        window.onload = () => {
+            loadAlarms();
+            updateStatus(); // Initialer Aufruf
+            setInterval(updateStatus, 5000); // Alle 5 Sekunden aktualisieren
+        };
+    </script>
+</body>
+</html>

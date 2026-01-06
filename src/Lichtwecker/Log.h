@@ -1,84 +1,82 @@
 #ifndef INC_LOG_H
 #define INC_LOG_H
+#include <stdarg.h>
+#include <string>
 
-#include "Config.h"
-#include "Debug.h"
-
-
-/**
- * @brief Logging Klasse 
- * 
- */
 class Log
 {
-   public:
+public:
+   enum LogLevel
+   {
+      LOG_LEVEL_NONE,
+      LOG_LEVEL_ERROR,
+      LOG_LEVEL_INFO,
+      LOG_LEVEL_DEBUG
+   };
 
-      /**
-       * @brief Prototype für die Sendefunktion
-       * 
-       */
-      typedef void (*sendfuncptr)(const String &msg);
+   typedef void (*sendfuncptr)(const std::string &msg);
 
-      static void ActivateLogging( bool act) {m_bfloggingactive = act;}
-      static void RegisterSendfunction(sendfuncptr);
-      static void Print( const String & text );
-      static void Print( const char * text ) {Print(String(text));}
+   static Log *GetInstance();
 
+   void registerSendFunction(sendfuncptr function);
+   void setLogLevel(LogLevel level);
+   LogLevel getLogLevel() const;
 
+   void print(LogLevel level, const std::string &text);
+   void println(LogLevel level, const std::string &text);
+   void printf(LogLevel level, const char *format, ...);
 
-   private:
-      Log(/* args */);
-      ~Log();
+private:
+   Log();
+   ~Log() = default;
+   Log(const Log &) = delete;
+   Log &operator=(const Log &) = delete;
 
-      static sendfuncptr m_sendfunction;
-      static bool m_bfloggingactive;
+   std::string levelToString(LogLevel level);
 
+   sendfuncptr m_sendFunction;
+   LogLevel m_currentLogLevel;
 };
 
-Log::sendfuncptr Log::m_sendfunction = nullptr;
-bool Log::m_bfloggingactive = false;
-
 /**
- * @brief Construct a new Log:: Log object
- * 
+ * @brief Wrapper-Funktion für INFO-Level Logging mit Zeilenumbruch.
  */
-Log::Log(/* args */)
+inline void LOG_INFO(const std::string &message)
 {
+   Log::GetInstance()->println(Log::LOG_LEVEL_INFO, message);
 }
 
 /**
- * @brief Destroy the Log:: Log object
- * 
+ * @brief Wrapper-Funktion für DEBUG-Level Logging mit Zeilenumbruch.
  */
-Log::~Log()
+inline void LOG_DEBUG(const std::string &message)
 {
+   Log::GetInstance()->println(Log::LOG_LEVEL_DEBUG, message);
 }
 
 /**
- * @brief 
- * 
- * @param function 
+ * @brief Wrapper-Funktion für ERROR-Level Logging mit Zeilenumbruch.
  */
-void Log::RegisterSendfunction(sendfuncptr function)
+inline void LOG_ERROR(const std::string &message)
 {
-   if( function != nullptr )
-      m_sendfunction = function;
+   Log::GetInstance()->println(Log::LOG_LEVEL_ERROR, message);
 }
 
 /**
- * @brief 
- * 
- * @param text 
+ * @brief Wrapper-Funktion für formatiertes Logging (printf-Stil).
+ * Verwendet C++11 variadic templates für Typsicherheit.
  */
-void Log::Print( const String & text )
+template <typename... Args>
+inline void LOG_PRINTF(Log::LogLevel level, const char *format, Args... args)
 {
-   if( m_sendfunction != nullptr )
-      if( m_bfloggingactive)
-         (*m_sendfunction)(text);
+   // Wir müssen die Größe des Buffers schätzen. 256 sollte für die meisten Log-Meldungen ausreichen.
+   char buffer[256];
+   int result = snprintf(buffer, sizeof(buffer), format, args...);
+   if (result > 0 && result < sizeof(buffer)) {
+      Log::GetInstance()->println(level, buffer);
+   } else {
+      Log::GetInstance()->println(Log::LOG_LEVEL_ERROR, "Fehler oder Pufferüberlauf in LOG_PRINTF");
+   }
 }
-
-
-
-
 
 #endif // LOG

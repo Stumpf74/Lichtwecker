@@ -1,177 +1,154 @@
 #ifndef INC_CONFIG_H
 #define INC_CONFIG_H
-
-/**
- * @brief mqtt server config
- * 
- */
-//#define mqtt_server "nherrmann"
-#define mqtt_server "haussteuerung"
-//#define mqtt_user "your_username"
-//#define mqtt_password "your_password"
-const char *cpcSubScriberSetHomeProtokollServer = {"HomeProtokollServer/Lichtwecker"};
-const char *cpcSubScriberSet = {"Lichtwecker/Set/+"};
-const char *cpcSubScriberGet = {"Lichtwecker/Get"};
-const char *cpcSubScriberAlarmClock = {"alarm_clock_mqtt/+"};
-
-
-
-/**
- * @brief pin config
- * 
- */
-//const int iLdr = A0; 
+#include <Arduino.h>
+#include <vector>
+#include <ArduinoJson.h>
+#include <LittleFS.h>
+#include "Log.h"
+#include "Miscellaneous.h"
 
 
 /**
  * @brief Speicher verwaltung für die Configdaten
  * 
  */
+
+
 class Config
 {
+   private:                        
+      Config() = default;
+
+      void loadConfig();
+      void saveConfig();
+      void setDefaultRadioStations();
+   
    public:
-      typedef enum LoggingSource
+      static Config* GetInstance()
+      {
+         static Config instance;
+         return &instance;
+      }
+
+      ~Config() = default;
+      void begin();
+
+      struct RadioStation {
+         String name;
+         String url;
+         int volume;
+      };
+
+
+      enum LoggingSource
       {
          Off = 0,
          Serial,
          MQTT
       };
 
-
-      static Config * GetInstance();
-      void Load();
-      void Write();
-
       const char * GetWifiSsid() { return ptr_wifi_ssid;}
       const char * GetWifiSPassword() { return ptr_wifi_password;}
       const char * GetWifiHostname() { return ptr_wifi_hostname;}
 
+      const char * GetMQTTHostname() { return ptr_mqtt_server;}
+      const char * GetMqttBaseTopic() { return ptr_mqtt_base_topic; }
+      const char * GetNTPHostname() { return ptr_NTP_server;}
+      const char * GetTimezoneString() { return ptr_timezone_string; }
+
+      // NEU: Geografische Koordinaten für Sonnenstands-Berechnung
+      double GetLatitude() { return m_tsConfig.latitude; }
+      void SetLatitude(double latitude) { m_tsConfig.latitude = latitude; saveConfig(); }
+
+      double GetLongitude() { return m_tsConfig.longitude; }
+      void SetLongitude(double longitude) { m_tsConfig.longitude = longitude; saveConfig(); }
+
+      const uint32_t GetMaxCounteValueUnchanged() { return m_tsConfig.maxCountValueUnchanged; }
+      void SetMaxCounteValueUnchanged(uint32_t value) { m_tsConfig.maxCountValueUnchanged = value; saveConfig(); }
+
       const char * GetVersionName() { return ptr_VersionName;}
+      
       const char * GetVersionNumber() { return ptr_VersionNumber;}
       const char * GetBuildDate();
+      const char * GetBuildDateAsCharPtr();
       const char * GetVersionString();
+      const char * GetVersionStringAsCharPtr();
+
+      const uint32_t GetVersionNumberConfig() { return uiVersionConfig;}
 
       const bool GetLoggingActive( ) {return m_tsConfig.loggingActive;}
-      void  SetLoggingActive(bool set) {m_tsConfig.loggingActive = set; Write();}
+      void SetLoggingActive(bool set) 
+      {
+         m_tsConfig.loggingActive = set; 
+         saveConfig();
+      }
+
+      const char * GetSubscriberToSet() { return m_subscriberSet.c_str(); }
+      const char * GetSubscriberToGet() { return m_subscriberGet.c_str(); }
+
+      const std::vector<RadioStation>& GetRadioStations() const { return m_tsConfig.radioStations; }
+      void SetRadioStations(const std::vector<RadioStation>& stations) { m_tsConfig.radioStations = stations; saveConfig(); }
 
    private:
-      Config();
-      ~Config();
+      const uint32_t uiVersionConfig{2};
 
-      const char* ptr_VersionName = {"Lichtwecker"};
-      const char* ptr_VersionNumber = {"1.0"};
+      // Zentrale Definition des Namens
+#ifdef DEBUG
+      const char* ptr_base_name = "Lichtwecker_DEBUG";
+#else
+      const char* ptr_base_name = "Lichtwecker";
+#endif
+
+
+      const char* ptr_VersionName = ptr_base_name;
+      const char* ptr_wifi_hostname = ptr_base_name;
+      const char* ptr_mqtt_base_topic = ptr_base_name;
+
+      // Member-Variablen für die dynamisch erstellten Subscriber-Strings
+      // Direkt initialisieren statt im Konstruktor
+      String m_subscriberSet = String(ptr_base_name) + "/Set/+";
+      String m_subscriberGet = String(ptr_base_name) + "/Get";
+
+      /**
+       * @brief Version number 
+       * V0.90 erste gute Version die einen Namen verdient ;-)
+       * 
+       * 
+       * 
+       */
+      
+      const char* ptr_VersionNumber{"0.90"};
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
-      
 
+      const char* ptr_wifi_ssid = {"MaxAlleinZuhaus"};
+      const char* ptr_wifi_password = {"$ImmerMalWiedereinNeuesPAsswort:0815"};
 
-      const char* ptr_wifi_ssid = {"MeinWlanSsid"};
-      const char* ptr_wifi_password = {"MeinWlanPW"};
-      const char* ptr_wifi_hostname = {"Lichtwecker"};
+      const char* ptr_mqtt_server = {"192.168.92.2"};
+      const char* ptr_NTP_server = { "192.168.92.1" };   
+      const char* ptr_timezone_string = { "CET-1CEST,M3.5.0/2,M10.5.0/3" };
+
 
       typedef struct tsConfig
       {
          bool loggingActive;
+         double latitude;
+         double longitude;
+         uint32_t maxCountValueUnchanged;
+         std::vector<RadioStation> radioStations;
       }Config_ts;
 
-      Config_ts m_tsConfig;
-      static Config * ptrInstance;
-      static const uint32_t m_uiEEPROM_ADDR_CONFIG = 0;
-      static const uint32_t m_uiEepromSize = 512;
+      Config_ts m_tsConfig = { 
+         .loggingActive = true,
+         .latitude = 49.0360,
+         .longitude = 12.1117,
+         .maxCountValueUnchanged = 450
+      };
+      String m_versionstring;
+      String m_strbuilddate;
+
 
 };
 
-Config * Config::ptrInstance = NULL;
-
-/**
- * @brief Singleton Config
- * 
- * @return Config* 
- */
-Config * Config::GetInstance()
-{
-   if( ptrInstance == NULL)
-   {
-      ptrInstance = new Config();
-   }
-   return ptrInstance;
-}
-
-/**
- * @brief Construct a new Config:: Config object
- * 
- */
-Config::Config() 
-{
-   m_tsConfig.loggingActive = true;
-   EEPROM.begin(m_uiEepromSize);
-   Load();
-}
-
-/**
- * @brief Schreibt die Config Daten ins EEPROM
- * 
- * @param tsconfig 
- */
-void Config::Write( )
-{
-   uint8_t * ptrData = (uint8_t *)&m_tsConfig;
-   uint32_t uiConfigStartAddress = m_uiEEPROM_ADDR_CONFIG;
-
-   for( uint32_t i = 0; i < sizeof(tsConfig); i++)
-   {
-      EEPROM.write( uiConfigStartAddress, *ptrData);
-      ++ptrData;
-      ++uiConfigStartAddress;
-   }
-
-   EEPROM.commit();
-}
-
-
-/**
- * @brief Laden der Config Parameter
- * 
- */
-void Config::Load( )
-{
-   uint8_t * ptrData = (uint8_t *)&m_tsConfig;
-   uint32_t uiConfigStartAddress = m_uiEEPROM_ADDR_CONFIG;
-   
-   for( uint32_t i = 0; i < sizeof(tsConfig); i++)
-   {
-      *ptrData = EEPROM.read( uiConfigStartAddress);
-      ++ptrData;
-      ++uiConfigStartAddress;
-   }
-}
-
-/**
- * @brief Gibt den Versionsstring zurück
- * 
- * @return const char* 
- */
-const char * Config::GetVersionString()
-{
-   String str;
-
-   str += String(ptr_VersionName) + " V" + String(ptr_VersionNumber);
-
-   return str.c_str();
-}
-
-/**
- * @brief Gibt build Zeitpunkt zurück
- * 
- * @return const char* 
- */
-const char * Config::GetBuildDate()
-{
-   String str;
-
-   str += String(ptrBuildDate) + " " + String(ptrBuildTime);
-
-   return str.c_str();
-}
 
 #endif // INC_CONFIG_H
