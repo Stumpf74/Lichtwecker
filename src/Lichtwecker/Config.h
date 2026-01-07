@@ -6,6 +6,13 @@
 #include <LittleFS.h>
 #include "Log.h"
 #include "Miscellaneous.h"
+#include "Secrets.h"
+
+// Template:
+// #define mysecret_ssid "MyWifiSSID"
+// #define mysecret_password "ICHBINSOGEHEIM"
+// #define mysecret_mqtt_server "192.168.1.1"
+// #define mysecret_NTP_server "192.168.1.1"   
 
 
 /**
@@ -121,11 +128,11 @@ class Config
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
 
-      const char* ptr_wifi_ssid = {"MaxAlleinZuhaus"};
-      const char* ptr_wifi_password = {"$ImmerMalWiedereinNeuesPAsswort:0815"};
+      const char* ptr_wifi_ssid = mysecret_ssid;
+      const char* ptr_wifi_password = mysecret_password;
 
-      const char* ptr_mqtt_server = {"192.168.92.2"};
-      const char* ptr_NTP_server = { "192.168.92.1" };   
+      const char* ptr_mqtt_server = mysecret_mqtt_server;
+      const char* ptr_NTP_server = mysecret_NTP_server;   
       const char* ptr_timezone_string = { "CET-1CEST,M3.5.0/2,M10.5.0/3" };
 
 

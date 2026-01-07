@@ -23,6 +23,7 @@ bool WifiManager::begin()
    LOG_INFO("");
    LOG_PRINTF(Log::LOG_LEVEL_INFO, "Verbinde mit %s", Config::GetInstance()->GetWifiSsid());
 
+   WiFi.mode(WIFI_MODE_NULL);
    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
    LOG_PRINTF(Log::LOG_LEVEL_INFO, "Setze Hostname: %s", Config::GetInstance()->GetWifiHostname());
    WiFi.setHostname(Config::GetInstance()->GetWifiHostname());
