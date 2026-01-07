@@ -13,7 +13,8 @@
 // #define mysecret_password "ICHBINSOGEHEIM"
 // #define mysecret_mqtt_server "192.168.1.1"
 // #define mysecret_NTP_server "192.168.1.1"   
-
+// #define mysecret_latitude  51.9005
+// #define mysecret_longitude  2.6098
 
 /**
  * @brief Speicher verwaltung für die Configdaten
@@ -147,8 +148,8 @@ class Config
 
       Config_ts m_tsConfig = { 
          .loggingActive = true,
-         .latitude = 49.0360,
-         .longitude = 12.1117,
+         .latitude = mysecret_latitude,
+         .longitude = mysecret_longitude,
          .maxCountValueUnchanged = 450
       };
       String m_versionstring;
