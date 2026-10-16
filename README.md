@@ -1,8 +1,7 @@
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-
+# Lichtwecker Version 1
+Auf der Suche nach dem passenden Lichtwecker, bin ich der Meinung das es nichts gutes auf dem Markt gibt. Darum selber machen!
+Es ist noch nicht perfekt aber aufgrund der begrenzten Zeit erstmal gut genug für mich.
+Das ganze ist Opensource und damit viel Spaß damit!
 
 <br />
 <div align="center">
@@ -11,16 +10,22 @@
 </div>
 <br />
 
-# Lichtwecker Version 1
-Auf der Suche nach dem passenden Lichtwecker, bin ich der Meinung das es nichts gutes auf dem Markt gibt. Darum selber machen!
 
-## Features
+## Features Version 1
 -   WIFI
     -   NTP-Zeitabgleich mit Sommerzeitumstellung
     -   Webserver für Weckeinstellungen, Statusanzeige, Lichtfunkiton und Einstellung der Radiostream Quellen 
 
+-   MQTT
+    -   Status und Logausgabe
+    -   Einstellen der Weckfunktionen
 
-**[Basis ist ein ESP32 D1 Mini von AZ-Delivery] (https://www.az-delivery.de/products/esp32-d1-mini-nodemcu-wifi-modul-esp-32-bluetooth-internet-entwicklungsboard-mit-usb-c-anschluss-kompatibel-mit-arduino-und-kompatibel-mit-wemos-d1-mini?_pos=2&_psq=d1&_ss=e&_v=1.0)**
+-   Touchdisplay
+    -   Anzeige der Uhrzeit und Datum
+    -   Menüführung Wecker, Radiostream, Licht und Statusinfo   
+
+
+![Basis ist ein ESP32 D1 Mini von AZ-Delivery] (https://www.az-delivery.de/products/esp32-d1-mini-nodemcu-wifi-modul-esp-32-bluetooth-internet-entwicklungsboard-mit-usb-c-anschluss-kompatibel-mit-arduino-und-kompatibel-mit-wemos-d1-mini?_pos=2&_psq=d1&_ss=e&_v=1.0)
 
 **[SPI Display 3,5" von TFT Touch 320x480 von Binghe](https://www.amazon.de/dp/B0D6B9M4ZH?ref=ppx_yo2ov_dt_b_fed_asin_title)**
 Adafruit I2S 3W Class D Amplifier Breakout - MAX98357A 
