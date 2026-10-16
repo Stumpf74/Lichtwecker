@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lichtwecker - Wecker-Einstellungen</title>
-    <link rel="stylesheet" type="text/css" href="/style.css">
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; margin: 0; padding: 20px; }
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -308,7 +307,7 @@
         window.onload = () => {
             loadAlarms();
             updateStatus(); // Initialer Aufruf
-            setInterval(updateStatus, 5000); // Alle 5 Sekunden aktualisieren
+            setInterval(updateStatus, 30000); // Alle 30 Sekunden aktualisieren
         };
     </script>
 </body>

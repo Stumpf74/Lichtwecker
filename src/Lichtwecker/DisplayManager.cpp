@@ -1,7 +1,9 @@
 #include <algorithm> // Für std::min
+#include <WiFi.h>
 #include "Config.h"
 #include "AudioManager.h"
 #include "AlarmManager.h"
+#include "LightController.h"
 #include "DisplayManager.h"
 #include "Log.h"
 
@@ -16,7 +18,8 @@ DisplayManager::DisplayManager() : m_tft(TFT_eSPI(TFT_WIDTH, TFT_HEIGHT)), // Ex
                                    m_lastTimeX(0), m_lastTimeY(0),
                                    m_dateX(0), m_dateY(0), m_dateDX(-1), m_dateDY(-1),
                                    m_lastDateX(0), m_lastDateY(0),
-                                   m_lastMoveTime(0), // Initialisiere mit leeren Strings
+                                   m_lastMoveTime(0),
+                                   m_lastSpriteDrawTime(0),
                                    m_currentTimeStr(""),
                                    m_currentDateStr(""),
                                    m_displayState(STATE_CLOCK),    // Starte im Uhr-Zustand
@@ -24,7 +27,9 @@ DisplayManager::DisplayManager() : m_tft(TFT_eSPI(TFT_WIDTH, TFT_HEIGHT)), // Ex
                                    m_alarmScreenVisible(false),
                                    m_alarmDisplayedTime(""),
                                    m_currentRadioStationIndex(0),  // Starte mit dem ersten Sender
-                                   m_playStopLabel((char *)"Play") // Start-Label für Play/Stop
+                                   m_radioIsPlaying(false),
+                                   m_lightBrightness(128),
+                                   m_selectedLightColor(CRGB(255, 140, 40))
 {
     // Initialisiere Zufallsgenerator für Startpositionen
     randomSeed(analogRead(32));
@@ -110,6 +115,8 @@ void DisplayManager::begin()
     int16_t dateWidth = m_tft.textWidth("31.12.2025"); // "DD.MM.YYYY" hat immer 10 Zeichen
     int16_t dateHeight = m_tft.fontHeight(4);
 
+    // The clock uses only a few colors, so 8-bit storage preserves appearance and halves sprite RAM.
+    m_timeSprite.setColorDepth(8);
     // Erstelle die Sprites mit den exakten Abmessungen
     m_timeSprite.createSprite(timeWidth, timeHeight);
     m_timeSprite.setTextDatum(MC_DATUM); // Text-Ankerpunkt in der Mitte
@@ -135,39 +142,18 @@ void DisplayManager::begin()
 
     drawUi(); // Zeichnet den initialen schwarzen Bildschirm (muss wieder aktiviert werden)
 
-    // --- Initialisiere die Menü-Buttons am unteren Rand ---
-    uint16_t btn_w = 100;
-    uint16_t btn_h = 40;
-    uint16_t btn_y = m_tft.height() - (btn_h / 2) - 10; // 10px vom unteren Rand
-    // "Zurück"-Button links
-    m_backButton.initButton(&m_tft, (btn_w / 2) + 20, btn_y, btn_w, btn_h, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Zurueck", 1);
-    // "Vor"-Button rechts
-    m_forwardButton.initButton(&m_tft, m_tft.width() - (btn_w / 2) - 20, btn_y, btn_w, btn_h, TFT_WHITE, TFT_DARKGREEN, TFT_WHITE, "Vor", 1);
-
-    // Initialisiere die sechs neuen Buttons für die Haupt-Menü-Seite
-    uint16_t menu_btn_w = 100;
-    uint16_t menu_btn_h = 70;
-    uint16_t menu_btn_y_start = 110;
-    uint16_t menu_btn_spacing_x = 110;
-    uint16_t menu_btn_spacing_y = 100;
-
-    // Erste Reihe
-    m_alarmButton.initButton(&m_tft, 60, menu_btn_y_start, menu_btn_w, menu_btn_h, TFT_WHITE, TFT_RED, TFT_WHITE, "Wecker", 1);
-    m_radioButton.initButton(&m_tft, 60 + menu_btn_spacing_x, menu_btn_y_start, menu_btn_w, menu_btn_h, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Radio", 1);
-    m_lightButton.initButton(&m_tft, 60 + 2 * menu_btn_spacing_x, menu_btn_y_start, menu_btn_w, menu_btn_h, TFT_WHITE, TFT_YELLOW, TFT_WHITE, "Licht", 1);
-
-    // Zweite Reihe
-    m_infoButton.initButton(&m_tft, 60, menu_btn_y_start + menu_btn_spacing_y, menu_btn_w, menu_btn_h, TFT_WHITE, TFT_GREEN, TFT_WHITE, "Info", 1);
-    m_playButton.initButton(&m_tft, 60 + menu_btn_spacing_x, menu_btn_y_start + menu_btn_spacing_y, menu_btn_w, menu_btn_h, TFT_WHITE, TFT_PURPLE, TFT_WHITE, "Play", 1);
-    m_stopButton.initButton(&m_tft, 60 + 2 * menu_btn_spacing_x, menu_btn_y_start + menu_btn_spacing_y, menu_btn_w, menu_btn_h, TFT_WHITE, TFT_ORANGE, TFT_WHITE, "Stop", 1);
-
-    // Initialisiere Buttons für Radio-Seite
-    uint16_t radio_btn_w = 120;
-    uint16_t radio_btn_h = 100;  // Erhöht für bessere Text-Zentrierung
-    uint16_t radio_btn_y = m_tft.height() / 2 + 50;                                                                                                     // Mitte unten
-    m_playStopButton.initButton(&m_tft, m_tft.width() / 2, radio_btn_y, radio_btn_w, radio_btn_h, TFT_WHITE, TFT_GREEN, TFT_WHITE, m_playStopLabel, 2); // Start mit "Play"
-    m_volumeUpButton.initButton(&m_tft, m_tft.width() / 2 + 150, radio_btn_y, radio_btn_w / 2, radio_btn_h, TFT_WHITE, TFT_BLUE, TFT_WHITE, "+", 2);
-    m_volumeDownButton.initButton(&m_tft, m_tft.width() / 2 - 150, radio_btn_y, radio_btn_w / 2, radio_btn_h, TFT_WHITE, TFT_BLUE, TFT_WHITE, "-", 2);
+    static char alarmLabel[] = "Wecker";
+    static char radioLabel[] = "Radio";
+    static char lightLabel[] = "Licht";
+    static char infoLabel[] = "Info";
+    const int buttonWidth = (m_tft.width() - 36) / 2;
+    const int buttonHeight = 78;
+    const int leftCenter = 12 + buttonWidth / 2;
+    const int rightCenter = m_tft.width() - leftCenter;
+    m_alarmButton.initButton(&m_tft, leftCenter, 103, buttonWidth, buttonHeight, TFT_WHITE, TFT_RED, TFT_WHITE, alarmLabel, 2);
+    m_radioButton.initButton(&m_tft, rightCenter, 103, buttonWidth, buttonHeight, TFT_WHITE, TFT_BLUE, TFT_WHITE, radioLabel, 2);
+    m_lightButton.initButton(&m_tft, leftCenter, 197, buttonWidth, buttonHeight, TFT_BLACK, TFT_YELLOW, TFT_BLACK, lightLabel, 2);
+    m_infoButton.initButton(&m_tft, rightCenter, 197, buttonWidth, buttonHeight, TFT_WHITE, TFT_DARKGREEN, TFT_WHITE, infoLabel, 2);
 }
 
 /**
@@ -233,12 +219,7 @@ void DisplayManager::handleStaticWithRelocation()
 
     unsigned long now = millis();
 
-    // Prüfe, ob sich der Inhalt geändert hat. m_lastTimeStr/m_lastDateStr wird in drawCurrentSprites aktualisiert
-    // und repräsentiert den zuletzt gezeichneten Zustand.
-    bool contentHasChanged = !m_lastTimeStr.equals(m_currentTimeStr) || !m_lastDateStr.equals(m_currentDateStr);
-
-    // Starte den Positionswechsel, wenn das Intervall abgelaufen ist ODER sich der Inhalt geändert hat, und keine Animation läuft.
-    if (m_fadeState == FadeState::NONE && (now - m_lastPositionChangeTime >= relocationInterval || contentHasChanged))
+    if (m_fadeState == FadeState::NONE && now - m_lastPositionChangeTime >= relocationInterval)
     {
         m_fadeState = FadeState::FADING_OUT;
         m_fadeStartTime = now;
@@ -281,7 +262,7 @@ void DisplayManager::handleStaticWithRelocation()
 void DisplayManager::handleMoving()
 {
     // Nur aktualisieren und zeichnen, wenn genug Zeit für den nächsten Frame vergangen ist (~60 FPS)
-    if (millis() - m_lastMoveTime < 16)
+    if (millis() - m_lastMoveTime < 33)
     {
         return;
     }
@@ -429,24 +410,14 @@ void DisplayManager::handleTouch(uint16_t x, uint16_t y)
     {
         if (m_snoozeButton.contains(x, y))
         {
-            m_snoozeButton.press(true);
-            m_snoozeButton.drawButton();
-            delay(100);
-            m_snoozeButton.press(false);
             AlarmManager::GetInstance()->snooze();
             return;
         }
-
         if (m_dismissAlarmButton.contains(x, y))
         {
-            m_dismissAlarmButton.press(true);
-            m_dismissAlarmButton.drawButton();
-            delay(100);
-            m_dismissAlarmButton.press(false);
             AlarmManager::GetInstance()->dismiss();
             return;
         }
-
         const int sliderLeft = 30;
         const int sliderRight = m_tft.width() - 30;
         const int sliderY = m_tft.height() * 2 / 3;
@@ -458,172 +429,108 @@ void DisplayManager::handleTouch(uint16_t x, uint16_t y)
         return;
     }
 
-    switch (m_displayState)
+    if (m_displayState == STATE_CLOCK)
     {
-    case STATE_CLOCK:
-        // Bei jeder Berührung im Uhr-Modus: Wechsle zum Menü
         m_displayState = STATE_MENU;
-        m_currentMenuPage = PAGE_MAIN; // Zurück zur Hauptseite
+        m_currentMenuPage = PAGE_MAIN;
         drawMenu();
-        break;
+        return;
+    }
 
-    case STATE_MENU:
-        // Prüfe, ob der "Zurück"-Button gedrückt wurde
-        if (m_backButton.contains(x, y))
+    if (m_backButton.contains(x, y))
+    {
+        if (m_currentMenuPage == PAGE_MAIN)
         {
-            m_backButton.press(true); // Visuelles Feedback
-            m_backButton.drawButton();
-            delay(100); // Kurze Verzögerung für das visuelle Feedback
-            m_backButton.press(false);
-
-            // Wechsle zurück zum Uhr-Modus
             m_displayState = STATE_CLOCK;
-            drawUi(); // Zeichnet den schwarzen Hintergrund neu
-            // Die Uhr wird im nächsten handle()-Durchlauf automatisch neu gezeichnet
+            drawUi();
         }
-        // Prüfe, ob der "Vor"-Button gedrückt wurde
-        else if (m_forwardButton.contains(x, y))
+        else
         {
-            m_forwardButton.press(true);
-            m_forwardButton.drawButton();
-            delay(100);
-            m_forwardButton.press(false);
+            m_currentMenuPage = PAGE_MAIN;
+            drawMenu();
+        }
+        return;
+    }
+    if (m_currentMenuPage != PAGE_MAIN && m_forwardButton.contains(x, y))
+    {
+        m_displayState = STATE_CLOCK;
+        drawUi();
+        return;
+    }
 
-            if (m_currentMenuPage == PAGE_MAIN)
+    if (m_currentMenuPage == PAGE_MAIN)
+    {
+        if (m_alarmButton.contains(x, y)) m_currentMenuPage = PAGE_ALARM;
+        else if (m_radioButton.contains(x, y)) m_currentMenuPage = PAGE_RADIO;
+        else if (m_lightButton.contains(x, y)) m_currentMenuPage = PAGE_LIGHT;
+        else if (m_infoButton.contains(x, y)) m_currentMenuPage = PAGE_INFO;
+        else return;
+        drawMenu();
+        return;
+    }
+
+    if (m_currentMenuPage == PAGE_RADIO)
+    {
+        const auto& stations = Config::GetInstance()->GetRadioStations();
+        if (stations.empty()) return;
+        if (m_radioPreviousButton.contains(x, y))
+        {
+            m_currentRadioStationIndex = (m_currentRadioStationIndex + stations.size() - 1) % stations.size();
+            if (m_radioIsPlaying) AudioManager::GetInstance()->playStream(stations[m_currentRadioStationIndex].url);
+            drawMenu();
+        }
+        else if (m_radioNextButton.contains(x, y))
+        {
+            m_currentRadioStationIndex = (m_currentRadioStationIndex + 1) % stations.size();
+            if (m_radioIsPlaying) AudioManager::GetInstance()->playStream(stations[m_currentRadioStationIndex].url);
+            drawMenu();
+        }
+        else if (m_playStopButton.contains(x, y))
+        {
+            if (m_radioIsPlaying)
             {
-                LOG_INFO("Vor-Button gedrueckt. (Noch keine Funktion)");
+                AudioManager::GetInstance()->stopStream();
+                m_radioIsPlaying = false;
             }
             else
             {
-                // Auf anderen Seiten: Zurück zur Hauptseite
-                m_currentMenuPage = PAGE_MAIN;
-                drawMenu();
+                AudioManager::GetInstance()->playStream(stations[m_currentRadioStationIndex].url);
+                m_radioIsPlaying = true;
             }
+            drawMenu();
         }
-        // Prüfe die sechs Haupt-Buttons nur auf der Hauptseite
-        else if (m_currentMenuPage == PAGE_MAIN)
+        else if (x >= 30 && x <= m_tft.width() - 30 && abs(static_cast<int>(y) - 230) <= 22)
         {
-            if (m_alarmButton.contains(x, y))
-            {
-                m_alarmButton.press(true);
-                m_alarmButton.drawButton();
-                delay(100);
-                m_alarmButton.press(false);
-                m_currentMenuPage = PAGE_ALARM;
-                drawMenu();
-            }
-            else if (m_radioButton.contains(x, y))
-            {
-                m_radioButton.press(true);
-                m_radioButton.drawButton();
-                delay(100);
-                m_radioButton.press(false);
-                m_currentMenuPage = PAGE_RADIO;
-                drawMenu();
-            }
-            else if (m_lightButton.contains(x, y))
-            {
-                m_lightButton.press(true);
-                m_lightButton.drawButton();
-                delay(100);
-                m_lightButton.press(false);
-                m_currentMenuPage = PAGE_LIGHT;
-                drawMenu();
-            }
-            else if (m_infoButton.contains(x, y))
-            {
-                m_infoButton.press(true);
-                m_infoButton.drawButton();
-                delay(100);
-                m_infoButton.press(false);
-                m_currentMenuPage = PAGE_INFO;
-                drawMenu();
-            }
-            else if (m_playButton.contains(x, y))
-            {
-                m_playButton.press(true);
-                m_playButton.drawButton();
-                delay(100);
-                m_playButton.press(false);
-                m_currentMenuPage = PAGE_PLAY;
-                drawMenu();
-            }
-            else if (m_stopButton.contains(x, y))
-            {
-                m_stopButton.press(true);
-                m_stopButton.drawButton();
-                delay(100);
-                m_stopButton.press(false);
-                m_currentMenuPage = PAGE_STOP;
-                drawMenu();
-            }
+            AudioManager::GetInstance()->setVolume(map(x, 30, m_tft.width() - 30, 0, 100));
+            drawMenu();
         }
-        // Prüfe Radio-Buttons auf der Radio-Seite
-        else if (m_currentMenuPage == PAGE_RADIO)
+        return;
+    }
+
+    if (m_currentMenuPage == PAGE_LIGHT)
+    {
+        if (m_lightWarmButton.contains(x, y)) m_selectedLightColor = CRGB(255, 175, 75);
+        else if (m_lightAmberButton.contains(x, y)) m_selectedLightColor = CRGB(255, 90, 10);
+        else if (m_lightWhiteButton.contains(x, y)) m_selectedLightColor = CRGB(255, 235, 190);
+        else if (m_lightOffButton.contains(x, y))
         {
-            auto &stations = Config::GetInstance()->GetRadioStations();
-            if (m_playStopButton.contains(x, y))
-            {
-                m_playStopButton.press(true);
-                m_playStopButton.drawButton();
-                delay(100);
-                m_playStopButton.press(false);
-                // Toggle Play/Stop
-                static bool isPlaying = false;
-                if (!isPlaying)
-                {
-                    if (!stations.empty() && m_currentRadioStationIndex < (int)stations.size())
-                    {
-                        AudioManager::GetInstance()->playStream(stations[m_currentRadioStationIndex].url);
-                        m_playStopLabel = (char *)"Stop";
-                            m_playStopButton.initButton(&m_tft, m_tft.width() / 2, m_tft.height() / 2 + 50, 120, 100, TFT_WHITE, TFT_RED, TFT_WHITE, m_playStopLabel, 2);
-                    }
-                    isPlaying = true;
-                }
-                else
-                {
-                    AudioManager::GetInstance()->stopStream();
-                    m_playStopLabel = (char *)"Play";
-                        m_playStopButton.initButton(&m_tft, m_tft.width() / 2, m_tft.height() / 2 + 50, 120, 100, TFT_WHITE, TFT_GREEN, TFT_WHITE, m_playStopLabel, 2);
-                    isPlaying = false;
-                }
-                drawMenu(); // Neu zeichnen, um Button-Text zu aktualisieren
-            }
-            else if (m_volumeUpButton.contains(x, y))
-            {
-                m_volumeUpButton.press(true);
-                m_volumeUpButton.drawButton();
-                delay(100);
-                m_volumeUpButton.press(false);
-                // Volume erhöhen
-                int vol = AudioManager::GetInstance()->getVolume();
-                if (vol < 100)
-                {
-                    AudioManager::GetInstance()->setVolume(vol + 5);
-                    drawMenu(); // Neu zeichnen für Volume-Update
-                }
-            }
-            else if (m_volumeDownButton.contains(x, y))
-            {
-                m_volumeDownButton.press(true);
-                m_volumeDownButton.drawButton();
-                delay(100);
-                m_volumeDownButton.press(false);
-                // Volume verringern
-                int vol = AudioManager::GetInstance()->getVolume();
-                if (vol > 0)
-                {
-                    AudioManager::GetInstance()->setVolume(vol - 5);
-                    drawMenu(); // Neu zeichnen für Volume-Update
-                }
-            }
+            LightController::GetInstance()->stop();
+            drawMenu();
+            return;
         }
-        break;
+        else if (x >= 30 && x <= m_tft.width() - 30 && abs(static_cast<int>(y) - 190) <= 22)
+        {
+            m_lightBrightness = map(x, 30, m_tft.width() - 30, 0, 255);
+        }
+        else return;
+
+        LightController::GetInstance()->setColor(m_selectedLightColor, m_lightBrightness);
+        drawMenu();
     }
 }
 
 /**
- * @brief Führt die Touchscreen-Kalibrierung durch und gibt die Kalibrierungsdaten auf dem seriellen Monitor aus.
+ * @brief Führt die Touchscreen-Kalibrierungsroutine durch und gibt die Kalibrierungsdaten auf dem seriellen Monitor aus.
  * Diese Funktion sollte nur bei der Ersteinrichtung aufgerufen werden.
  */
 void DisplayManager::calibrateTouch()
@@ -679,6 +586,17 @@ uint16_t DisplayManager::calculateFadedColor(CRGB baseColor)
  */
 void DisplayManager::drawCurrentSprites()
 {
+    const bool animationActive = m_isMoving || m_fadeState != FadeState::NONE;
+    const unsigned long now = millis();
+    if (animationActive && now - m_lastSpriteDrawTime < 33)
+    {
+        return;
+    }
+    if (animationActive)
+    {
+        m_lastSpriteDrawTime = now;
+    }
+
     // --- Zeit-Sprite zeichnen ---
     bool nightMode = isNightMode();
 
@@ -830,79 +748,227 @@ void DisplayManager::testTouchController()
     LOG_INFO("Wenn der Wert > 0 ist, funktioniert die Kommunikation wahrscheinlich. Bei Berührung sollte der Wert deutlich ansteigen (z.B. > 300).");
 }
 
+void DisplayManager::drawLabelledButton(TFT_eSPI_Button& button, int16_t centerX, int16_t centerY,
+                                        uint16_t width, uint16_t height, uint16_t outlineColor,
+                                        uint16_t fillColor, uint16_t textColor, const char* label, uint8_t font)
+{
+    static char emptyLabel[] = "";
+    button.initButton(&m_tft, centerX, centerY, width, height, outlineColor, fillColor, textColor, emptyLabel, 1);
+    button.drawButton();
+    m_tft.setTextColor(textColor, fillColor);
+    m_tft.drawCentreString(label, centerX, centerY - 10, font);
+}
+
 /**
  * @brief Zeichnet das Hauptmenü auf dem Display.
  */
 void DisplayManager::drawMenu()
 {
     m_tft.fillScreen(TFT_BLACK);
-    m_backButton.drawButton();
-    m_forwardButton.drawButton();
+    m_tft.fillRect(0, 0, m_tft.width(), 46, TFT_DARKGREY);
 
+    const char* title = "Lichtwecker";
+    switch (m_currentMenuPage)
+    {
+    case PAGE_ALARM: title = "Wecker"; break;
+    case PAGE_RADIO: title = "Radio"; break;
+    case PAGE_LIGHT: title = "Licht"; break;
+    case PAGE_INFO: title = "System"; break;
+    default: break;
+    }
+    m_tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
+    m_tft.drawCentreString(title, m_tft.width() / 2, 8, 4);
+
+    static char clockLabel[] = "Uhr";
+    static char menuLabel[] = "Menue";
+    static char backToClockLabel[] = "Uhr";
+    const int navY = m_tft.height() - 26;
+    drawLabelledButton(m_backButton, 60, navY, 104, 44, TFT_WHITE, TFT_BLUE, TFT_WHITE,
+                       m_currentMenuPage == PAGE_MAIN ? clockLabel : menuLabel, 4);
+    if (m_currentMenuPage != PAGE_MAIN)
+    {
+        drawLabelledButton(m_forwardButton, m_tft.width() - 60, navY, 104, 44,
+                           TFT_WHITE, TFT_DARKGREEN, TFT_WHITE, backToClockLabel, 4);
+    }
+
+    const int tileWidth = (m_tft.width() - 36) / 2;
+    const int leftCenter = 12 + tileWidth / 2;
+    const int rightCenter = m_tft.width() - leftCenter;
     if (m_currentMenuPage == PAGE_MAIN)
     {
-        // Zeichne die sechs Haupt-Buttons
-        m_alarmButton.drawButton();
-        m_radioButton.drawButton();
-        m_lightButton.drawButton();
-        m_infoButton.drawButton();
-        m_playButton.drawButton();
-        m_stopButton.drawButton();
-
-        // Titel für die Hauptseite
-        m_tft.setCursor(10, 10);
-        m_tft.setTextColor(TFT_WHITE);
-        m_tft.setTextSize(2);
-        m_tft.println("Hauptmenue");
+        drawLabelledButton(m_alarmButton, leftCenter, 103, tileWidth, 78, TFT_WHITE, TFT_RED, TFT_WHITE, "Wecker", 4);
+        drawLabelledButton(m_radioButton, rightCenter, 103, tileWidth, 78, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Radio", 4);
+        drawLabelledButton(m_lightButton, leftCenter, 197, tileWidth, 78, TFT_BLACK, TFT_YELLOW, TFT_BLACK, "Licht", 4);
+        drawLabelledButton(m_infoButton, rightCenter, 197, tileWidth, 78, TFT_WHITE, TFT_DARKGREEN, TFT_WHITE, "Info", 4);
     }
-    else
+    else if (m_currentMenuPage == PAGE_ALARM)
     {
-        // Für andere Seiten: Zeige den Seitennamen
-        m_tft.setCursor(10, 10);
-        m_tft.setTextColor(TFT_WHITE);
-        m_tft.setTextSize(2);
-        switch (m_currentMenuPage)
-        {
-        case PAGE_ALARM:
-            m_tft.println("Wecker");
-            break;
-        case PAGE_RADIO:
-        {
-            m_tft.println("Radio");
-            // Zeige aktuellen Sender-Namen
-            auto &stations = Config::GetInstance()->GetRadioStations();
-            if (!stations.empty() && m_currentRadioStationIndex < (int)stations.size())
-            {
-                m_tft.setCursor(10, 55);
-                m_tft.setTextSize(1);
-                m_tft.printf("Sender: %s", stations[m_currentRadioStationIndex].name.c_str());
-            }
-            // Zeige Lautstärke
-            m_tft.setCursor(10, 80);
-            m_tft.printf("Volume: %d", AudioManager::GetInstance()->getVolume());
-            // Zeichne Radio-Buttons
-            m_playStopButton.drawButton();
-            m_volumeUpButton.drawButton();
-            m_volumeDownButton.drawButton();
-            break;
-        }
-        case PAGE_LIGHT:
-            m_tft.println("Licht");
-            break;
-        case PAGE_INFO:
-            m_tft.println("Info");
-            break;
-        case PAGE_PLAY:
-            m_tft.println("Play");
-            break;
-        case PAGE_STOP:
-            m_tft.println("Stop");
-            break;
-        default:
-            m_tft.println("Unbekannt");
-            break;
-        }
+        drawAlarmPage();
     }
+    else if (m_currentMenuPage == PAGE_RADIO)
+    {
+        drawRadioPage();
+    }
+    else if (m_currentMenuPage == PAGE_LIGHT)
+    {
+        drawLightPage();
+    }
+    else if (m_currentMenuPage == PAGE_INFO)
+    {
+        drawInfoPage();
+    }
+}
+
+void DisplayManager::drawAlarmPage()
+{
+    const char* dayNames[] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
+    for (int index = 0; index < AlarmManager::NUM_ALARMS; ++index)
+    {
+        const auto& alarm = AlarmManager::GetInstance()->getAlarm(index);
+        const int rowY = 53 + index * 56;
+        m_tft.fillRoundRect(12, rowY, m_tft.width() - 24, 51, 5, TFT_DARKGREY);
+        m_tft.drawRoundRect(12, rowY, m_tft.width() - 24, 51, 5, TFT_LIGHTGREY);
+
+        String alarmName = "Wecker ";
+        alarmName += String(index + 1);
+        m_tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
+        m_tft.drawString(alarmName, 22, rowY + 3, 4);
+
+        char alarmTime[6];
+        snprintf(alarmTime, sizeof(alarmTime), "%02u:%02u", alarm.hour, alarm.minute);
+        m_tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
+        m_tft.drawString(alarmTime, 112, rowY + 1, 4);
+
+        String days;
+        for (int day = 0; day < 7; ++day)
+        {
+            if (alarm.days & (1 << day))
+            {
+                if (!days.isEmpty()) days += " ";
+                days += dayNames[day];
+            }
+        }
+        if (days.isEmpty()) days = "Nie";
+        m_tft.setTextColor(TFT_CYAN, TFT_DARKGREY);
+        m_tft.drawString(days, 247, rowY + 5, 4);
+
+        m_tft.setTextColor(alarm.enabled ? TFT_GREEN : TFT_RED, TFT_DARKGREY);
+        m_tft.drawString(alarm.enabled ? "AN" : "AUS", 407, rowY + 5, 4);
+        m_tft.setTextColor(TFT_LIGHTGREY, TFT_DARKGREY);
+        m_tft.drawString(alarm.radioEnabled ? "Radio: Ein" : "Radio: Aus", 22, rowY + 29, 4);
+        m_tft.setTextColor(alarm.sunriseEnabled ? TFT_ORANGE : TFT_LIGHTGREY, TFT_DARKGREY);
+        m_tft.drawString(alarm.sunriseEnabled ? "Licht: Ein" : "Licht: Aus", 190, rowY + 29, 4);
+    }
+}
+
+void DisplayManager::drawRadioPage()
+{
+    const auto& stations = Config::GetInstance()->GetRadioStations();
+    if (stations.empty())
+    {
+        m_tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+        m_tft.drawCentreString("Keine Sender konfiguriert", m_tft.width() / 2, 130, 2);
+        return;
+    }
+    if (m_currentRadioStationIndex >= static_cast<int>(stations.size())) m_currentRadioStationIndex = 0;
+
+    String stationCount = String(m_currentRadioStationIndex + 1) + " / " + String(stations.size());
+    m_tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    m_tft.drawCentreString(stationCount, m_tft.width() / 2, 55, 2);
+    m_tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    m_tft.drawCentreString(stations[m_currentRadioStationIndex].name, m_tft.width() / 2, 78, 4);
+
+    static char previousLabel[] = "<";
+    static char nextLabel[] = ">";
+    static char playLabel[] = "Play";
+    static char stopLabel[] = "Stop";
+    drawLabelledButton(m_radioPreviousButton, 70, 150, 72, 56, TFT_WHITE, TFT_DARKGREY, TFT_WHITE, previousLabel, 4);
+    drawLabelledButton(m_playStopButton, m_tft.width() / 2, 150, 160, 56,
+                       TFT_WHITE, m_radioIsPlaying ? TFT_RED : TFT_DARKGREEN, TFT_WHITE,
+                       m_radioIsPlaying ? stopLabel : playLabel, 4);
+    drawLabelledButton(m_radioNextButton, m_tft.width() - 70, 150, 72, 56, TFT_WHITE, TFT_DARKGREY, TFT_WHITE, nextLabel, 4);
+
+    String volumeText = "Lautstaerke: ";
+    volumeText += String(AudioManager::GetInstance()->getVolume());
+    volumeText += "%";
+    m_tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    m_tft.drawCentreString(volumeText, m_tft.width() / 2, 190, 2);
+    const int sliderLeft = 30;
+    const int sliderWidth = m_tft.width() - 60;
+    const int sliderY = 230;
+    const int volume = AudioManager::GetInstance()->getVolume();
+    m_tft.fillRect(sliderLeft, sliderY - 5, sliderWidth, 10, TFT_DARKGREY);
+    m_tft.fillRect(sliderLeft, sliderY - 5, sliderWidth * volume / 100, 10, TFT_CYAN);
+    const int thumbX = sliderLeft + sliderWidth * volume / 100;
+    m_tft.fillCircle(thumbX, sliderY, 10, TFT_CYAN);
+    m_tft.drawCircle(thumbX, sliderY, 10, TFT_WHITE);
+}
+
+void DisplayManager::drawLightPage()
+{
+    static char warmLabel[] = "Warm";
+    static char amberLabel[] = "Amber";
+    static char whiteLabel[] = "Weiss";
+    static char offLabel[] = "Aus";
+    // m_tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    // m_tft.drawCentreString("Farbton", m_tft.width() / 2, 57, 4);
+    drawLabelledButton(m_lightWarmButton, 100, 105, 118, 72, TFT_WHITE, TFT_ORANGE, TFT_WHITE, warmLabel, 4);
+    drawLabelledButton(m_lightAmberButton, 240, 105, 118, 72, TFT_WHITE, TFT_RED, TFT_WHITE, amberLabel, 4);
+    drawLabelledButton(m_lightWhiteButton, 380, 105, 118, 72, TFT_WHITE, TFT_WHITE, TFT_BLACK, whiteLabel, 4);
+
+    String brightnessText = "Helligkeit: ";
+    brightnessText += String(static_cast<int>(m_lightBrightness) * 100 / 255);
+    brightnessText += "%";
+    m_tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    m_tft.drawCentreString(brightnessText, m_tft.width() / 2, 158, 4);
+    const int sliderLeft = 30;
+    const int sliderWidth = m_tft.width() - 60;
+    const int sliderY = 190;
+    m_tft.fillRect(sliderLeft, sliderY - 5, sliderWidth, 10, TFT_DARKGREY);
+    m_tft.fillRect(sliderLeft, sliderY - 5, sliderWidth * m_lightBrightness / 255, 10, TFT_ORANGE);
+    const int thumbX = sliderLeft + sliderWidth * m_lightBrightness / 255;
+    m_tft.fillCircle(thumbX, sliderY, 10, TFT_ORANGE);
+    m_tft.drawCircle(thumbX, sliderY, 10, TFT_WHITE);
+
+    drawLabelledButton(m_lightOffButton, m_tft.width() / 2, 248, 150, 42,
+                       TFT_WHITE, TFT_RED, TFT_WHITE, offLabel, 4);
+}
+
+void DisplayManager::drawInfoPage()
+{
+    const auto drawCard = [this](const char* label, const String& value, int x, int y)
+    {
+        m_tft.fillRoundRect(x, y, 220, 42, 4, TFT_DARKGREY);
+        m_tft.setTextFont(1);
+        m_tft.setTextColor(TFT_CYAN, TFT_DARKGREY);
+        m_tft.drawString(label, x + 9, y + 3, 4);
+        m_tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
+//        const uint8_t valueFont = value.length() <= 10 ? 4 : 2;
+        const uint8_t valueFont = 4;
+        m_tft.drawString(value, x + 9, y + (valueFont == 4 ? 13 : 17), valueFont);
+    };
+
+    const bool connected = WiFi.status() == WL_CONNECTED;
+    const int leftX = 12;
+    const int rightX = m_tft.width() - 232;
+    drawCard("WLAN", connected ? "Verbunden" : "Getrennt", leftX, 55);
+    drawCard("IP-Adresse", connected ? WiFi.localIP().toString() : String("--"), rightX, 55);
+    drawCard("Signal", connected ? String(WiFi.RSSI()) + " dBm" : String("--"), leftX, 103);
+    drawCard("Uhrzeit", appContext.ntpTime.getFormattedTimeShort(), rightX, 103);
+
+    const auto formatSunTime = [](time_t value)
+    {
+        if (value <= 0) return String("--:--");
+        struct tm timeInfo;
+        localtime_r(&value, &timeInfo);
+        char buffer[6];
+        strftime(buffer, sizeof(buffer), "%H:%M", &timeInfo);
+        return String(buffer);
+    };
+    drawCard("Sonnenaufgang", formatSunTime(SunTimeManager::GetInstance()->getSunriseTime()), leftX, 151);
+    drawCard("Sonnenuntergang", formatSunTime(SunTimeManager::GetInstance()->getSunsetTime()), rightX, 151);
+    drawCard("Version", Config::GetInstance()->GetVersionStringAsCharPtr(), leftX, 199);
+    drawCard("Lautstaerke", String(AudioManager::GetInstance()->getVolume()) + "%", rightX, 199);
 }
 
 void DisplayManager::drawAlarmScreen()
@@ -921,12 +987,10 @@ void DisplayManager::drawAlarmScreen()
     static char snoozeLabel[] = "Schlummern 5 min";
     static char dismissLabel[] = "Beenden";
     const int buttonY = m_tft.height() - 45;
-    m_snoozeButton.initButton(&m_tft, m_tft.width() / 2 - 115, buttonY, 210, 60,
-                              TFT_BLACK, TFT_YELLOW, TFT_BLACK, snoozeLabel, 2);
-    m_snoozeButton.drawButton();
-    m_dismissAlarmButton.initButton(&m_tft, m_tft.width() / 2 + 115, buttonY, 150, 60,
-                                    TFT_WHITE, TFT_RED, TFT_WHITE, dismissLabel, 2);
-    m_dismissAlarmButton.drawButton();
+        drawLabelledButton(m_snoozeButton, m_tft.width() / 2 - 115, buttonY, 210, 60,
+                           TFT_BLACK, TFT_YELLOW, TFT_BLACK, snoozeLabel, 4);
+        drawLabelledButton(m_dismissAlarmButton, m_tft.width() / 2 + 115, buttonY, 150, 60,
+                           TFT_WHITE, TFT_RED, TFT_WHITE, dismissLabel, 4);
 }
 
 void DisplayManager::drawAlarmVolumeControl()
@@ -940,7 +1004,7 @@ void DisplayManager::drawAlarmVolumeControl()
     volumeLabel += String(volume);
     volumeLabel += "%";
     m_tft.setTextColor(TFT_BLACK, TFT_WHITE);
-    m_tft.drawCentreString(volumeLabel, m_tft.width() / 2, sliderY - 42, 2);
+    m_tft.drawCentreString(volumeLabel, m_tft.width() / 2, sliderY - 42, 4);
 
     m_tft.fillRect(sliderLeft, sliderY - 5, sliderWidth, 10, TFT_DARKGREY);
     m_tft.fillRect(sliderLeft, sliderY - 5, sliderWidth * volume / 100, 10, TFT_RED);

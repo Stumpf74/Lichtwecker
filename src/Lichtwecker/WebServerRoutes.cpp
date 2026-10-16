@@ -6,41 +6,54 @@
 #include "SunTimeManager.h"  // Für Sonnenauf- und -untergangszeiten
 #include "AlarmManager.h"    // Für AlarmManager
 #include <ArduinoJson.h> // Für JSON-Verarbeitung
+#include <WiFi.h>
 
-// Replaces placeholder with LED state value
-String processor(const String &var)
+void logHttpRequest(const char* route, AsyncWebServerRequest* request)
 {
-   // Temperatur::TempValue temps;
-   // Temperatur::GetInstance()->GetLastTemperatures(temps);
-   // //   Log::PrintF("Web: %i\t%i\t%i\t%i\r\n", temps.temp1, temps.temp2, temps.temp3, temps.temp4);
-   // if (var == "TEMP1")
-   // {
-   //    return String(temps.temp1);
-   // }
-   // else if (var == "TEMP2")
-   // {
-   //    return String(temps.temp2);
-   // }
-   // else if (var == "TEMP3")
-   // {
-   //    return String(temps.temp3);
-   // }
-   // else if (var == "TEMP4")
-   // {
-   //    return String(temps.temp4);
-   // }
+   LOG_PRINTF(Log::LOG_LEVEL_INFO, "HTTP %s %s WiFi=%d Heap=%u", route,
+              request->url().c_str(), WiFi.status(), ESP.getFreeHeap());
+}
 
-   return String("NA");
+void sendJsonResponse(AsyncWebServerRequest* request, JsonDocument& document)
+{
+   AsyncResponseStream* response = request->beginResponseStream("application/json", 256);
+   if (response == nullptr)
+   {
+      request->send(503, "text/plain", "Insufficient memory");
+      return;
+   }
+
+   serializeJson(document, *response);
+   request->send(response);
+}
+
+void sendIndexPage(AsyncWebServerRequest* request)
+{
+   AsyncWebServerResponse* response = request->beginResponse(LittleFS, "/index.html", "text/html");
+   if (response == nullptr)
+   {
+      LOG_PRINTF(Log::LOG_LEVEL_ERROR, "HTTP index response fehlgeschlagen. Heap=%u, Datei vorhanden=%d",
+                 ESP.getFreeHeap(), LittleFS.exists("/index.html"));
+      request->send(503, "text/plain", "Index temporarily unavailable");
+      return;
+   }
+   request->send(response);
 }
 
 void setupWebServerRoutes(AsyncWebServer& server, AsyncEventSource& events, AsyncWebSocket& ws)
 {
    // Route for root / web page
    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-             { request->send(LittleFS, "/index.html", String(), false, processor); });
+             {
+                logHttpRequest("index", request);
+                sendIndexPage(request);
+             });
 
    server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request)
-             { request->send(LittleFS, "/index.html", String(), false, processor); });
+             {
+                logHttpRequest("index", request);
+                sendIndexPage(request);
+             });
 
    // Route für die neue Radio-Seite
    server.on("/radio.html", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -65,9 +78,7 @@ void setupWebServerRoutes(AsyncWebServer& server, AsyncEventSource& events, Asyn
          alarmObj["minute"] = alarm.minute;
          alarmObj["days"] = alarm.days;
       }
-      String response;
-      serializeJson(doc, response);
-      request->send(200, "application/json", response);
+      sendJsonResponse(request, doc);
    });
 
    // API-Endpunkt, um einen Wecker zu setzen
@@ -109,9 +120,7 @@ void setupWebServerRoutes(AsyncWebServer& server, AsyncEventSource& events, Asyn
          stationObj["url"] = station.url;
          stationObj["volume"] = station.volume;
       }
-      String response;
-      serializeJson(doc, response);
-      request->send(200, "application/json", response);
+      sendJsonResponse(request, doc);
    });
 
    // API-Endpunkt, um die Radiosenderliste zu aktualisieren
@@ -155,7 +164,9 @@ void setupWebServerRoutes(AsyncWebServer& server, AsyncEventSource& events, Asyn
       unsigned long hours = seconds / 3600;
       seconds %= 3600;
       unsigned long minutes = seconds / 60;
-      doc["uptime"] = String(days) + "d " + String(hours) + "h " + String(minutes) + "m";
+      char uptimeBuffer[32];
+      snprintf(uptimeBuffer, sizeof(uptimeBuffer), "%lud %luh %lum", days, hours, minutes);
+      doc["uptime"] = uptimeBuffer;
 
       // Sonnenauf- und -untergangszeiten hinzufügen
       time_t sunrise = SunTimeManager::GetInstance()->getSunriseTime();
@@ -184,9 +195,7 @@ void setupWebServerRoutes(AsyncWebServer& server, AsyncEventSource& events, Asyn
           doc["transit"] = "wird berechnet...";
       }
 
-      String response;
-      serializeJson(doc, response);
-      request->send(200, "application/json", response);
+      sendJsonResponse(request, doc);
    });
 
    // API-Endpunkt, um eine statische Farbe zu setzen

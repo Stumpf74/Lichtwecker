@@ -14,7 +14,7 @@ public:
     // Definiert die verschiedenen Anzeigezustände
     enum DisplayState { STATE_CLOCK, STATE_MENU };
     // Definiert die verschiedenen Menü-Seiten
-    enum MenuPage { PAGE_MAIN, PAGE_ALARM, PAGE_RADIO, PAGE_LIGHT, PAGE_INFO, PAGE_PLAY, PAGE_STOP };
+    enum MenuPage { PAGE_MAIN, PAGE_ALARM, PAGE_RADIO, PAGE_LIGHT, PAGE_INFO };
     /**
      * @brief Gibt die Singleton-Instanz des DisplayManagers zurück.
      * @return DisplayManager* Zeiger auf die Instanz.
@@ -116,6 +116,7 @@ private:
 
     // Letzte Zeit, zu der die Sprites aktualisiert wurden
     unsigned long m_lastMoveTime;
+    unsigned long m_lastSpriteDrawTime;
 
     // Letzte angezeigte Werte, um unnötiges Neuzeichnen zu vermeiden
     String m_lastTimeStr;
@@ -183,7 +184,14 @@ private:
     /**
      * @brief Zeichnet das Hauptmenü auf dem Display.
      */
+    void drawLabelledButton(TFT_eSPI_Button& button, int16_t centerX, int16_t centerY,
+                            uint16_t width, uint16_t height, uint16_t outlineColor,
+                            uint16_t fillColor, uint16_t textColor, const char* label, uint8_t font);
     void drawMenu();
+    void drawAlarmPage();
+    void drawRadioPage();
+    void drawLightPage();
+    void drawInfoPage();
     void drawAlarmScreen();
     void drawAlarmVolumeControl();
 
@@ -197,20 +205,21 @@ private:
     TFT_eSPI_Button m_radioButton;
     TFT_eSPI_Button m_lightButton;
     TFT_eSPI_Button m_infoButton;
-    TFT_eSPI_Button m_playButton;
-    TFT_eSPI_Button m_stopButton;
 
-    // Neue Buttons für Radio-Seite
     TFT_eSPI_Button m_playStopButton;
-    TFT_eSPI_Button m_volumeUpButton;
-    TFT_eSPI_Button m_volumeDownButton;
+    TFT_eSPI_Button m_radioPreviousButton;
+    TFT_eSPI_Button m_radioNextButton;
+    TFT_eSPI_Button m_lightWarmButton;
+    TFT_eSPI_Button m_lightAmberButton;
+    TFT_eSPI_Button m_lightWhiteButton;
+    TFT_eSPI_Button m_lightOffButton;
     TFT_eSPI_Button m_snoozeButton;
     TFT_eSPI_Button m_dismissAlarmButton;
 
-    // Aktueller Radio-Sender-Index
     int m_currentRadioStationIndex;
-    // Label für Play/Stop Button
-    char* m_playStopLabel;
+    bool m_radioIsPlaying;
+    uint8_t m_lightBrightness;
+    CRGB m_selectedLightColor;
 };
 
 #endif // DISPLAY_MANAGER_H

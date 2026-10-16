@@ -203,7 +203,10 @@ void setup()
    AudioManager::GetInstance()->begin();
 
    // Erstelle separaten Task für Audio-Verarbeitung
-   xTaskCreate(audioTask, "AudioTask", 4096, NULL, 1, NULL);
+   if (xTaskCreate(audioTask, "AudioTask", 12288, NULL, 1, NULL) != pdPASS)
+   {
+      LOG_PRINTF(Log::LOG_LEVEL_ERROR, "Audio-Task konnte nicht gestartet werden. Freier Heap: %u Byte", ESP.getFreeHeap());
+   }
 
    appContext.otaManager.begin(); // OTA nach den hardware-nahen Bibliotheken initialisieren.
    WebServerManager::GetInstance()->begin();

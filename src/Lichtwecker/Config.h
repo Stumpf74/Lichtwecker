@@ -127,7 +127,7 @@ class Config
        * 
        */
       
-      const char* ptr_VersionNumber{"0.91"};
+      const char* ptr_VersionNumber{"1.00"};
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
 

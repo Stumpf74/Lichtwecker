@@ -1,6 +1,10 @@
 #include "AudioManager.h"
 #include "Config.h"
 #include "Log.h"
+#include <esp_heap_caps.h>
+#include <mp3_decoder/mp3_decoder.h>
+#include <aac_decoder/aac_decoder.h>
+#include <flac_decoder/flac_decoder.h>
 
 AudioManager::AudioManager() : m_audio(false, 3, 0), m_currentVolume(35), m_commandQueue(nullptr)
 {
@@ -45,12 +49,33 @@ void AudioManager::handle()
                 break;
             case CommandType::Stop:
                 m_audio.stopSong();
+                MP3Decoder_FreeBuffers();
+                AACDecoder_FreeBuffers();
+                FLACDecoder_FreeBuffers();
+                LOG_PRINTF(Log::LOG_LEVEL_DEBUG,
+                           "Audio-Decoder freigegeben: heap=%u, intern=%u, groesster Block=%u",
+                           ESP.getFreeHeap(),
+                           heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                           heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
                 break;
             case CommandType::SetVolume:
                 m_audio.setVolume(command.volume);
                 break;
             }
         }
+    }
+
+    static uint32_t nextHeapReport = 0;
+    const uint32_t now = millis();
+    if (m_audio.isRunning() && static_cast<int32_t>(now - nextHeapReport) >= 0)
+    {
+        nextHeapReport = now + 10000;
+        LOG_PRINTF(Log::LOG_LEVEL_DEBUG,
+                   "Audio-Speicher: heap=%u, intern=%u, groesster Block=%u, Stack frei=%u",
+                   ESP.getFreeHeap(),
+                   heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                   heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                   static_cast<unsigned int>(uxTaskGetStackHighWaterMark(nullptr)));
     }
 
     m_audio.loop();  // Muss regelmäßig aufgerufen werden für Streaming
