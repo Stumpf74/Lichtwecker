@@ -24,6 +24,13 @@ Das ganze ist Opensource und damit viel Spaß damit!
     -   Anzeige der Uhrzeit und Datum
     -   Menüführung Wecker, Radiostream, Licht und Statusinfo   
 
+-   Audiostream
+    -   I2S 3W Audiokonverter für Webradio
+
+-   RGB LED-Streifenansterung WS2812B
+    -   Für den Sonnenaufgang 30 Minuten vor Weckzeit
+
+
 Als Herzstück setze ich den ESP32 D1 Mini ein, der alle Arbeit übernimmt.
 Dazu ein 3,5" TFT Touchdisplay mit 320x480 Punkten. Für die Audioausgabe ein Modul von Adafruit "I2S 3W Class D Amplifier - MAX98357A" das man zu hauf beim großen "A" finden kann. Ich wollte das Ganze ziemlich einfach halten um nicht an der Komplexität die auch kleine Projekte haben können zu scheitern. Den Lautsprecher habe ich aus altem Spielzeug der Kinder ausgebaut. Und damit gings dann los!
 
@@ -35,8 +42,35 @@ Dazu ein 3,5" TFT Touchdisplay mit 320x480 Punkten. Für die Audioausgabe ein Mo
 </div>
 <br />
 
-Auch am Schaltplan kann man sehen das ich alles sehr einfach gehalten habe. Das einzige was ich mir als Elektroniker nicht verbeißen konnte ist ein 1000F Kondensator, der die Leistung aus der USB-Schnittstelle unterstützen soll. 
+Auch am Schaltplan kann man sehen das ich alles sehr einfach gehalten habe. Das einzige was ich mir als Elektroniker nicht verbeißen konnte ist ein 1000F Kondensator, der die Leistung aus der USB-Schnittstelle unterstützen soll. Alles andere ist sehr schlicht und fliegend verdrahtet.  
 
+Als Spannungsversorgung habe ich eine USB-C Buchse verbaut. Ich bnutze an dieser Buchse nur die 5V Spannnungsversorgung und missbrauche die Weiße Leitung für die Ansteuerung des LED Streifens. Damit kann ich mit einem USB Kabel den Wecker mit Strom versorgen aber auch den LED-Streifen ansteuern ohne ein weiteres Kabel zu benötigen. Damit macht es den WAF (woman acceptance factor) um einiges besser. 
+
+## Software
+Ich habe das Projekt in Visual Studio Code mit Platform IO aufgesetzt, da es gut mit den Arduino LIB zusammen arbeitet. 
+
+#Verwendete LIBS
+-   AduinoJsoon
+-   AsyncTCP
+-   ESP32-audioI2S
+-   ESPAsyncWebServer
+-   PubSubClient
+-   Ringbuffer
+-   SolarCalculator
+-   TFT_eSPI
+
+Das Ziel bei der Software war es übersichtlich zu bleiben. Alleine Anhand der verwendeten Libs sieht man das sich das Projekt dann doch etwas erweitert hat.
+Json wird für MQTT und auch für den Datenaustausch zwischen Webservice und Applikation verwendet. Auch das speichern der Daten im interen LittleFS verwendet Json.
+Die Daten werden persistent im Flash gespeichert um bei einem Neustart nicht wieder eingegen werden zu müssen. 
+Das gilt auch für die gespeicherten Radiostrem Adressen. Der RIngbuffer macht es einfacher die Daten ohne eine möglichen Speicherüberlauf zu verwalten.
+Den SolarCalculator benötige ich für Sommer und Winter. Im Sommer benötige ich keine Sonnenaufgang, da ich keine Roladen im Zimmer habe. Anhand dees Sonnenaufgangs bleibt diese Funktion dann aus.
+Am Schluss noch TFT_eSPI. Ich wollte einfach nicht die ganze TFT Ansteuerung selbst schreiben, das war mir doch zuviel.
+
+Wie man damit schon erkennen kann, war das Projekt nun doch etwas umfangreicher als gedacht. 
+Ich habe lange mit der Speicherverwaltung gekämpft, da der Audiostream nicht vernachlässigt werden will und das RAM doch sehr begrenzt ist. Auch heute gibt es beim Radio hören und gleichzeitigen Einstellen der Weckzeiten per Website Probleme. Aber das mache ich dann halt nicht zur gleichen Zeit.
+
+Dann viel Spaß damit.
+Über Rückmeldungen würde ich mich freuen!
 
 
 
