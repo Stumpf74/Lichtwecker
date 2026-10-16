@@ -1,12 +1,12 @@
-# Lichtwecker Version 1
+   <h1>Lichtwecker mit Touchdisplay und ESP32</h1>
 Auf der Suche nach dem passenden Lichtwecker, bin ich der Meinung das es nichts gutes auf dem Markt gibt. Darum selber machen!
 Es ist noch nicht perfekt aber aufgrund der begrenzten Zeit erstmal gut genug für mich.
 Das ganze ist Opensource und damit viel Spaß damit!
 
 <br />
+<br />
 <div align="center">
    <img src="Datensammlung/Bilder/20261016_132110_neu.jpg" width="400">
-   <h1>Lichtwecker mit Touchdisplay und ESP32</h1>
 </div>
 <br />
 
@@ -24,16 +24,23 @@ Das ganze ist Opensource und damit viel Spaß damit!
     -   Anzeige der Uhrzeit und Datum
     -   Menüführung Wecker, Radiostream, Licht und Statusinfo   
 
+Als Herzstück setze ich den ESP32 D1 Mini ein, der alle Arbeit übernimmt.
+Dazu ein 3,5" TFT Touchdisplay mit 320x480 Punkten. Für die Audioausgabe ein Modul von Adafruit "I2S 3W Class D Amplifier - MAX98357A" das man zu hauf beim großen "A" finden kann. Ich wollte das Ganze ziemlich einfach halten um nicht an der Komplexität die auch kleine Projekte haben können zu scheitern. Den Lautsprecher habe ich aus altem Spielzeug der Kinder ausgebaut. Und damit gings dann los!
 
-![Basis ist ein ESP32 D1 Mini von AZ-Delivery] (https://www.az-delivery.de/products/esp32-d1-mini-nodemcu-wifi-modul-esp-32-bluetooth-internet-entwicklungsboard-mit-usb-c-anschluss-kompatibel-mit-arduino-und-kompatibel-mit-wemos-d1-mini?_pos=2&_psq=d1&_ss=e&_v=1.0)
+## Schaltplan
+<br />
+<br />
+<div align="center">
+   <img src="Datensammlung/Bilder/2026-10-16 141332.png" width="400">
+</div>
+<br />
 
-**[SPI Display 3,5" von TFT Touch 320x480 von Binghe](https://www.amazon.de/dp/B0D6B9M4ZH?ref=ppx_yo2ov_dt_b_fed_asin_title)**
-Adafruit I2S 3W Class D Amplifier Breakout - MAX98357A 
+Auch am Schaltplan kann man sehen das ich alles sehr einfach gehalten habe. Das einzige was ich mir als Elektroniker nicht verbeißen konnte ist ein 1000F Kondensator, der die Leistung aus der USB-Schnittstelle unterstützen soll. 
+
+
 
 
 <!-- 
-
-
 
 <div align="center">
     <img src="wiki/DB_ESP32_NOW_Illistration.png" alt="DroneBridge with connectionless ESP-NOW protocol support for increased range of 1km or more.">
