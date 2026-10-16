@@ -46,6 +46,7 @@ void LightController::begin()
 {
     LOG_INFO("Init LightController");
     // Wähle hier deinen LED-Typ und die Pin-Belegung (z.B. WS2812B, GRB-Reihenfolge)
+    pinMode(LED_PIN, OUTPUT);
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(m_leds, NUM_LEDS);
     FastLED.setBrightness(0); // LEDs beim Start ausschalten
     FastLED.show();

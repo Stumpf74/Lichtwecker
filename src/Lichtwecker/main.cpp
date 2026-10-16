@@ -15,6 +15,7 @@
 #include "DisplayManager.h"
 #include "SunTimeManager.h"
 #include "InputManager.h"
+#include "AudioManager.h"
 
 // Definition und Initialisierung der globalen AppContext-Instanz
 AppContext appContext;
@@ -142,6 +143,18 @@ TimedTask tasks[] = {
 const int numTasks = sizeof(tasks) / sizeof(TimedTask);
 
 /**
+ * @brief Separater Task für Audio-Verarbeitung, um Konflikte mit anderen Tasks zu vermeiden.
+ */
+void audioTask(void *pvParameters)
+{
+   while (true)
+   {
+      AudioManager::GetInstance()->handle();
+      vTaskDelay(1); // Kurze Verzögerung, um CPU freizugeben
+   }
+}
+
+/**
  * @brief Die Haupt-Setup-Funktion. Wird einmal beim Start des ESP32 ausgeführt.
  * Initialisiert alle Komponenten wie Logging, WLAN, MQTT, Display, Controller und den Webserver.
  */
@@ -149,6 +162,7 @@ void setup()
 {
 #ifdef DEBUG
    Log::GetInstance()->registerSendFunction(SendLogDataToSerial);
+//   Log::GetInstance()->registerSendFunction(SendLogDataToMqttWrapper); // MQTT-Logging (noch nicht implementiert)
 #else
    Log::GetInstance()->registerSendFunction(SendLogDataToMqttWrapper); // MQTT-Logging (noch nicht implementiert)
 #endif
@@ -159,15 +173,6 @@ void setup()
    LOG_INFO("\r\n\r\n==================================================");
    LOG_PRINTF(Log::LOG_LEVEL_INFO, "Starte: %s %s", Config::GetInstance()->GetVersionStringAsCharPtr(), Config::GetInstance()->GetBuildDateAsCharPtr());
    delay(100);
-
-   // // --- Display-Pin-Konfiguration und Reset ---
-   // // Konfiguriere alle notwendigen Pins als OUTPUT.
-   // pinMode(TFT_RST, OUTPUT);
-   // // // Manuelle Reset-Sequenz für das Display
-   // digitalWrite(TFT_RST, LOW);
-   // delay(20);
-   // digitalWrite(TFT_RST, HIGH);
-   // delay(150);
 
    // Dateisystem initialisieren, bevor darauf zugegriffen wird
    if (!LittleFS.begin(true))
@@ -187,21 +192,33 @@ void setup()
    appContext.ntpTime.begin();
    // Initialisiere die Controller. Es hat sich als stabiler erwiesen,
    DisplayManager::GetInstance()->begin();
-   LightController::GetInstance()->begin();
+   // I2S Interrupt error->begin();
    // Führe einen Test durch, um die Touch-Controller-Kommunikation zu überprüfen
    DisplayManager::GetInstance()->testTouchController();
 
    AlarmManager::GetInstance()->begin();
    SunTimeManager::GetInstance()->begin();
    InputManager::GetInstance()->begin();
+   LightController::GetInstance()->begin();
+   AudioManager::GetInstance()->begin();
+
+   // Erstelle separaten Task für Audio-Verarbeitung
+   xTaskCreate(audioTask, "AudioTask", 4096, NULL, 1, NULL);
 
    appContext.otaManager.begin(); // OTA nach den hardware-nahen Bibliotheken initialisieren.
-
    WebServerManager::GetInstance()->begin();
 
    // Erst mal alle Daten neu hoch
    LOG_INFO("Initialisierung abgeschlossen.");
    appContext.bfSendStatus = true;
+   delay(1500);
+   
+   // // Automatisches Starten des ersten Radio-Streams
+   // auto &stations = Config::GetInstance()->GetRadioStations();
+   // if (!stations.empty())
+   // {
+   //     AudioManager::GetInstance()->playStream(stations[0].url);
+   // }
 }
 
 /**
@@ -230,8 +247,8 @@ void loop()
 
    // Diese Handles müssen in jedem Schleifendurchlauf aufgerufen werden
    LightController::GetInstance()->handle(); // Aktualisiert die LED-Animationen
-   DisplayManager::GetInstance()->handle(); // Verarbeitet Touch-Eingaben
-   InputManager::GetInstance()->handle(); // Verarbeitet Benutzereingaben (z.B. Touch)
-   appContext.mqttClient.handle();        // Verarbeitet MQTT-Nachrichten
-   appContext.otaManager.handle();        // Verarbeitet ota-Nachrichten
+   DisplayManager::GetInstance()->handle();  // Verarbeitet Touch-Eingaben
+   InputManager::GetInstance()->handle();    // Verarbeitet Benutzereingaben (z.B. Touch)
+   appContext.mqttClient.handle();           // Verarbeitet MQTT-Nachrichten
+   appContext.otaManager.handle();           // Verarbeitet ota-Nachrichten
 }

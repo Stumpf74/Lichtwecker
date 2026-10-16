@@ -2,6 +2,7 @@
 #define ALARM_MANAGER_H
 
 #include <cstdint>
+#include <ctime>
 #include "Config.h"
 
 class AlarmManager
@@ -29,19 +30,24 @@ public:
     {
         bool enabled;
         bool sunriseEnabled; // NEU: Schalter für den Sonnenaufgang
+        bool radioEnabled;
         uint8_t hour;
         uint8_t minute;
         uint8_t days; // Bitmaske mit den `DayOfWeek`-Werten
         bool triggeredToday; // Flag, um zu verhindern, dass der Alarm mehrmals am Tag ausgelöst wird
+        bool alarmTriggeredToday;
     };
 
     static AlarmManager *GetInstance();
 
     void begin();
     void handleAlarms();
+    bool isRinging() const;
+    void snooze();
+    void dismiss();
 
     // Methoden zum Konfigurieren der Wecker
-    void setAlarm(int index, bool enabled, bool sunriseEnabled, uint8_t hour, uint8_t minute, uint8_t days);
+    void setAlarm(int index, bool enabled, bool sunriseEnabled, bool radioEnabled, uint8_t hour, uint8_t minute, uint8_t days);
     const AlarmSetting &getAlarm(int index) const;
 
 private:
@@ -51,10 +57,14 @@ private:
     AlarmManager &operator=(const AlarmManager &) = delete;
 
     void checkAndTriggerAlarm(int index);
+    void startRinging(int index);
     void saveAlarms();
     void loadAlarms();
 
     int m_lastDayChecked; // Um den täglichen Reset der Trigger-Flags zu steuern
+    int m_ringingAlarmIndex;
+    int m_snoozedAlarmIndex;
+    time_t m_snoozeUntilEpoch;
     AlarmSetting m_alarms[NUM_ALARMS];
 };
 

@@ -79,6 +79,7 @@
                     <tr>
                         <th>Aktiv</th>
                         <th>Sonnenaufgang</th>
+                        <th>Radio</th>
                         <th>Uhrzeit</th>
                         <th>Tage</th>
                         <th>Aktion</th>
@@ -162,6 +163,13 @@
                             <span class="slider"></span>
                         </label>`;
 
+                    const isRadioEnabled = alarm.radioEnabled ? 'checked' : '';
+                    const radioEnabledHtml = `
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="radioEnabled-${index}" ${isRadioEnabled}>
+                            <span class="slider"></span>
+                        </label>`;
+
                     let daysHtml = '';
                     for (let i = 0; i < 7; i++) {
                         const isChecked = (alarm.days & (1 << i)) ? 'checked' : '';
@@ -177,6 +185,7 @@
                     row.innerHTML = `
                         <td>${enabledHtml}</td>
                         <td>${sunriseEnabledHtml}</td>
+                        <td>${radioEnabledHtml}</td>
                         <td><input type="time" id="time-${index}" value="${alarmTime}"></td>
                         <td><div class="days-group">${daysHtml}</div></td>
                         <td>
@@ -198,6 +207,7 @@
         async function saveAlarm(index) {
             const enabled = document.getElementById(`enabled-${index}`).checked;
             const sunriseEnabled = document.getElementById(`sunriseEnabled-${index}`).checked;
+            const radioEnabled = document.getElementById(`radioEnabled-${index}`).checked;
             const timeValue = document.getElementById(`time-${index}`).value;
             const [hour, minute] = timeValue.split(':').map(Number);
 
@@ -206,7 +216,7 @@
                 days |= parseInt(cb.value);
             });
 
-            const data = { index, enabled, sunriseEnabled, hour, minute, days };
+            const data = { index, enabled, sunriseEnabled, radioEnabled, hour, minute, days };
             const statusDiv = document.getElementById(`status-${index}`);
 
             try {

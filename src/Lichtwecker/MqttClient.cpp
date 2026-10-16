@@ -8,7 +8,8 @@
 #include "LightController.h"
 
 MqttClient::MqttClient() : m_client(m_espClient),
-                           m_nextReconnectAttempt(0)
+                           m_nextReconnectAttempt(0),
+                           m_reconnectDelayMs(5000)
 {
 }
 
@@ -71,11 +72,12 @@ void MqttClient::callback(char* topic, byte* payload, unsigned int length)
          int index = doc["index"]; // 0-3
          bool enabled = doc["enabled"];
          bool sunriseEnabled = doc["sunriseEnabled"] | true; // Default auf true, falls Feld fehlt
+         bool radioEnabled = doc["radioEnabled"] | false;
          uint8_t hour = doc["hour"];
          uint8_t minute = doc["minute"];
          uint8_t days = doc["days"]; // Bitmask
 
-         AlarmManager::GetInstance()->setAlarm(index, enabled, sunriseEnabled, hour, minute, days);
+         AlarmManager::GetInstance()->setAlarm(index, enabled, sunriseEnabled, radioEnabled, hour, minute, days);
       }
    }
    else if (strTopic.indexOf("Set/RGB") != -1)
@@ -118,12 +120,20 @@ void MqttClient::begin()
    LOG_INFO("Init MqttClient");
    m_client.setServer(Config::GetInstance()->GetMQTTHostname(), 1883);
    m_client.setCallback(MqttClient::callback);
+   m_client.setSocketTimeout(2);
+   m_reconnectDelayMs = 5000;
+   m_nextReconnectAttempt = 0;
 }
 
 void MqttClient::handle()
 {
+   if (WiFi.status() != WL_CONNECTED)
+   {
+      return;
+   }
+
    // Wenn nicht verbunden, versuche periodisch einen Reconnect.
-   if (!m_client.connected() && millis() > m_nextReconnectAttempt)
+   if (!m_client.connected() && static_cast<int32_t>(millis() - m_nextReconnectAttempt) >= 0)
    {
       reconnect();
    }
@@ -134,14 +144,13 @@ void MqttClient::handle()
 
 void MqttClient::reconnect()
 {
-   // Setze den nächsten Versuch in 5 Sekunden, egal ob dieser Versuch klappt oder nicht.
-   // Das verhindert, dass diese Funktion in einer schnellen Schleife aufgerufen wird.
-   m_nextReconnectAttempt = millis() + 5000;
+   m_nextReconnectAttempt = millis() + m_reconnectDelayMs;
 
    LOG_INFO("Versuche MQTT-Verbindung...");
    String lwtTopic = String(Config::GetInstance()->GetMqttBaseTopic()) + "/STATUS";
    if (m_client.connect(Config::GetInstance()->GetMqttBaseTopic(), lwtTopic.c_str(), 0, true, "offline"))
    {
+      m_reconnectDelayMs = 5000;
       LOG_INFO(" verbunden.");
       // Publish initial status
       publish("STATUS", "online", true);
@@ -155,10 +164,12 @@ void MqttClient::reconnect()
    }
    else
    {
+        const unsigned long failedDelay = m_reconnectDelayMs;
+        m_reconnectDelayMs = min(m_reconnectDelayMs * 2, 60000UL);
       LOG_PRINTF(
-          Log::LOG_LEVEL_ERROR, 
-          "Verbindung fehlgeschlagen, rc=%d. Nächster Versuch in 5 Sekunden.", 
-          m_client.state()
+           Log::LOG_LEVEL_ERROR,
+           "Verbindung fehlgeschlagen, rc=%d. Nächster Versuch in %lu Sekunden.",
+           m_client.state(), failedDelay / 1000
       );
    }
 }

@@ -6,16 +6,20 @@
 #include <LittleFS.h>
 #include "LightController.h"
 #include "SunTimeManager.h" // Hinzufügen, um auf die Sonnenaufgangszeit zugreifen zu können
+#include "AudioManager.h"
 
 const char* ALARMS_CONFIG_FILE = "/alarms.json";
 
 
-AlarmManager::AlarmManager() : m_lastDayChecked(-1)
+AlarmManager::AlarmManager() : m_lastDayChecked(-1),
+                               m_ringingAlarmIndex(-1),
+                               m_snoozedAlarmIndex(-1),
+                               m_snoozeUntilEpoch(0)
 {
     // Initialisiere alle Wecker als deaktiviert
     for (int i = 0; i < NUM_ALARMS; ++i)
     {
-        m_alarms[i] = {false, true, 7, 0, 0, false}; // sunriseEnabled standardmäßig auf true
+        m_alarms[i] = {false, true, false, 7, 0, 0, false, false}; // sunriseEnabled standardmäßig auf true
     }
 }
 
@@ -33,9 +37,83 @@ void AlarmManager::begin()
 
 void AlarmManager::handleAlarms()
 {
+    if (m_snoozedAlarmIndex >= 0 && time(nullptr) >= m_snoozeUntilEpoch)
+    {
+        const int alarmIndex = m_snoozedAlarmIndex;
+        m_snoozedAlarmIndex = -1;
+        m_snoozeUntilEpoch = 0;
+        if (alarmIndex < NUM_ALARMS && m_alarms[alarmIndex].enabled)
+        {
+            startRinging(alarmIndex);
+        }
+    }
+
     for (int i = 0; i < NUM_ALARMS; ++i)
     {
         checkAndTriggerAlarm(i);
+    }
+}
+
+bool AlarmManager::isRinging() const
+{
+    return m_ringingAlarmIndex >= 0;
+}
+
+void AlarmManager::snooze()
+{
+    if (!isRinging())
+    {
+        return;
+    }
+
+    const int alarmIndex = m_ringingAlarmIndex;
+    m_ringingAlarmIndex = -1;
+    m_snoozedAlarmIndex = alarmIndex;
+    m_snoozeUntilEpoch = time(nullptr) + 5 * 60;
+    if (m_alarms[alarmIndex].radioEnabled)
+    {
+        AudioManager::GetInstance()->stopStream();
+    }
+    LOG_PRINTF(Log::LOG_LEVEL_INFO, "Wecker %d für 5 Minuten zurückgestellt.", alarmIndex + 1);
+}
+
+void AlarmManager::dismiss()
+{
+    if (!isRinging())
+    {
+        return;
+    }
+
+    const int alarmIndex = m_ringingAlarmIndex;
+    m_ringingAlarmIndex = -1;
+    m_snoozedAlarmIndex = -1;
+    m_snoozeUntilEpoch = 0;
+    if (m_alarms[alarmIndex].radioEnabled)
+    {
+        AudioManager::GetInstance()->stopStream();
+    }
+    LightController::GetInstance()->stop();
+    LOG_PRINTF(Log::LOG_LEVEL_INFO, "Wecker %d für heute beendet.", alarmIndex + 1);
+}
+
+void AlarmManager::startRinging(int index)
+{
+    m_ringingAlarmIndex = index;
+    LightController::GetInstance()->setColor(CRGB::White, 255);
+    LOG_PRINTF(Log::LOG_LEVEL_INFO, "Wecker %d ausgelöst!", index + 1);
+
+    const auto& alarm = m_alarms[index];
+    if (alarm.radioEnabled)
+    {
+        const auto& stations = Config::GetInstance()->GetRadioStations();
+        if (!stations.empty())
+        {
+            AudioManager::GetInstance()->playStream(stations[0].url);
+        }
+        else
+        {
+            LOG_ERROR("Radio-Wecker aktiviert, aber keine Sender konfiguriert.");
+        }
     }
 }
 
@@ -60,6 +138,7 @@ void AlarmManager::checkAndTriggerAlarm(int index)
         LOG_DEBUG("Neuer Tag, setze Alarm-Trigger zurück.");
         for (int i = 0; i < NUM_ALARMS; ++i) {
             m_alarms[i].triggeredToday = false;
+            m_alarms[i].alarmTriggeredToday = false;
         }
         m_lastDayChecked = timeinfo.tm_yday;
     }
@@ -104,13 +183,22 @@ void AlarmManager::checkAndTriggerAlarm(int index)
         }
         // Hier könnte später ein "else" stehen, um z.B. nur einen Ton abzuspielen
     }
+
+    if (todayIsAlarmDay && !alarm.alarmTriggeredToday && now >= alarmTimeEpoch && now < (alarmTimeEpoch + 60))
+    {
+        alarm.alarmTriggeredToday = true;
+        if (!isRinging())
+        {
+            startRinging(index);
+        }
+    }
 }
 
-void AlarmManager::setAlarm(int index, bool enabled, bool sunriseEnabled, uint8_t hour, uint8_t minute, uint8_t days)
+void AlarmManager::setAlarm(int index, bool enabled, bool sunriseEnabled, bool radioEnabled, uint8_t hour, uint8_t minute, uint8_t days)
 {
     if (index >= 0 && index < NUM_ALARMS)
     {
-        m_alarms[index] = {enabled, sunriseEnabled, hour, minute, days, false}; // triggeredToday beim Setzen zurücksetzen
+        m_alarms[index] = {enabled, sunriseEnabled, radioEnabled, hour, minute, days, false, false}; // Trigger beim Setzen zurücksetzen
 
         // Erstelle einen lesbaren String für die Wochentage
         String daysStr;
@@ -133,8 +221,8 @@ void AlarmManager::setAlarm(int index, bool enabled, bool sunriseEnabled, uint8_
             daysStr = "Nie";
         }
 
-        LOG_PRINTF(Log::LOG_LEVEL_INFO, "Wecker %d gesetzt: Aktiv=%d, Sonnenaufgang=%d, Zeit=%02d:%02d, Tage=%s", 
-                    index + 1, enabled, sunriseEnabled, hour, minute, daysStr.c_str());
+        LOG_PRINTF(Log::LOG_LEVEL_INFO, "Wecker %d gesetzt: Aktiv=%d, Sonnenaufgang=%d, Radio=%d, Zeit=%02d:%02d, Tage=%s", 
+                index + 1, enabled, sunriseEnabled, radioEnabled, hour, minute, daysStr.c_str());
         saveAlarms(); // Einstellungen im LittleFS speichern
     }
 }
@@ -154,6 +242,7 @@ void AlarmManager::saveAlarms()
         JsonObject alarmObj = alarmsArray.add<JsonObject>();
         alarmObj["enabled"] = m_alarms[i].enabled;
         alarmObj["sunriseEnabled"] = m_alarms[i].sunriseEnabled;
+        alarmObj["radioEnabled"] = m_alarms[i].radioEnabled;
         alarmObj["hour"] = m_alarms[i].hour;
         alarmObj["minute"] = m_alarms[i].minute;
         alarmObj["days"] = m_alarms[i].days;
@@ -183,6 +272,7 @@ void AlarmManager::loadAlarms()
     if (!LittleFS.exists(ALARMS_CONFIG_FILE))
     {
         LOG_INFO("Keine Wecker-Konfigurationsdatei gefunden. Standardwerte werden verwendet.");
+        saveAlarms();
         return;
     }
 
@@ -211,10 +301,12 @@ void AlarmManager::loadAlarms()
         {
             m_alarms[i].enabled = alarmObj["enabled"];
             m_alarms[i].sunriseEnabled = alarmObj["sunriseEnabled"] | true; // Default auf true, falls Feld fehlt
+            m_alarms[i].radioEnabled = alarmObj["radioEnabled"] | false;
             m_alarms[i].hour = alarmObj["hour"];
             m_alarms[i].minute = alarmObj["minute"];
             m_alarms[i].days = alarmObj["days"];
             m_alarms[i].triggeredToday = false; // Beim Laden immer zurücksetzen
+            m_alarms[i].alarmTriggeredToday = false;
             i++;
         }
     }

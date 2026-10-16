@@ -4,9 +4,6 @@
 #include "AppContext.h"      // Für NTPTime
 #include "SunTimeManager.h"  // Für Sonnenauf- und -untergangszeiten
 #include <TFT_eSPI.h>
-// Weist FastLED an, den I2S-Controller zu verwenden, um den Konflikt mit TFT_eSPI (SPI-Controller) zu lösen.
-// Muss VOR dem Inkludieren von FastLED.h stehen.
-#define FASTLED_ESP32_I2S true
 #include <FastLED.h> // Für CRGB
 
 
@@ -16,6 +13,8 @@ class DisplayManager
 public:
     // Definiert die verschiedenen Anzeigezustände
     enum DisplayState { STATE_CLOCK, STATE_MENU };
+    // Definiert die verschiedenen Menü-Seiten
+    enum MenuPage { PAGE_MAIN, PAGE_ALARM, PAGE_RADIO, PAGE_LIGHT, PAGE_INFO, PAGE_PLAY, PAGE_STOP };
     /**
      * @brief Gibt die Singleton-Instanz des DisplayManagers zurück.
      * @return DisplayManager* Zeiger auf die Instanz.
@@ -185,10 +184,33 @@ private:
      * @brief Zeichnet das Hauptmenü auf dem Display.
      */
     void drawMenu();
+    void drawAlarmScreen();
+    void drawAlarmVolumeControl();
 
     DisplayState m_displayState; // Aktueller Anzeigezustand
+    MenuPage m_currentMenuPage; // Aktuelle Menü-Seite
+    bool m_alarmScreenVisible;
+    String m_alarmDisplayedTime;
     TFT_eSPI_Button m_backButton;
     TFT_eSPI_Button m_forwardButton;
+    TFT_eSPI_Button m_alarmButton;
+    TFT_eSPI_Button m_radioButton;
+    TFT_eSPI_Button m_lightButton;
+    TFT_eSPI_Button m_infoButton;
+    TFT_eSPI_Button m_playButton;
+    TFT_eSPI_Button m_stopButton;
+
+    // Neue Buttons für Radio-Seite
+    TFT_eSPI_Button m_playStopButton;
+    TFT_eSPI_Button m_volumeUpButton;
+    TFT_eSPI_Button m_volumeDownButton;
+    TFT_eSPI_Button m_snoozeButton;
+    TFT_eSPI_Button m_dismissAlarmButton;
+
+    // Aktueller Radio-Sender-Index
+    int m_currentRadioStationIndex;
+    // Label für Play/Stop Button
+    char* m_playStopLabel;
 };
 
 #endif // DISPLAY_MANAGER_H

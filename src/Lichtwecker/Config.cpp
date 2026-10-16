@@ -80,6 +80,10 @@ void Config::loadConfig()
     {
         m_tsConfig.maxCountValueUnchanged = doc["maxCountValueUnchanged"];
     }
+    if (!doc["radioVolume"].isNull())
+    {
+        m_tsConfig.radioVolume = doc["radioVolume"];
+    }
     if (doc.containsKey("radioStations"))
     {
         JsonArray stationsArray = doc["radioStations"].as<JsonArray>();
@@ -109,6 +113,7 @@ void Config::saveConfig()
     doc["latitude"] = m_tsConfig.latitude;
     doc["longitude"] = m_tsConfig.longitude;
     doc["maxCountValueUnchanged"] = m_tsConfig.maxCountValueUnchanged;
+    doc["radioVolume"] = m_tsConfig.radioVolume;
 
     JsonArray stationsArray = doc["radioStations"].to<JsonArray>();
     for(const auto& station : m_tsConfig.radioStations) {

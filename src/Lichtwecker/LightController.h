@@ -1,9 +1,6 @@
 #ifndef LIGHT_CONTROLLER_H
 #define LIGHT_CONTROLLER_H
 
-// Weist FastLED an, den I2S-Controller zu verwenden, um den Konflikt mit TFT_eSPI (SPI-Controller) zu lösen.
-// Muss VOR dem Inkludieren von FastLED.h stehen.
-#define FASTLED_ESP32_I2S true
 #include <FastLED.h>
 
 // Vorwärtsdeklaration
@@ -50,7 +47,7 @@ private:
 
     // --- LED Konfiguration ---
     static const int NUM_LEDS = 60; // Passe die Anzahl deiner LEDs an
-    static const int LED_PIN = 15;  // Passe den GPIO-Pin an
+    static const int LED_PIN = RGB_SDA_PIN;  // Passe den GPIO-Pin an
     CRGB m_leds[NUM_LEDS];
 
     bool m_isTesting;

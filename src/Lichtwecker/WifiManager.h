@@ -16,8 +16,10 @@ private:
     WifiManager(const WifiManager&) = delete;
     WifiManager& operator=(const WifiManager&) = delete;
 
-    uint32_t m_wifiRetryCount;
-    static const uint32_t MAX_WIFI_RETRY = 15;
+    uint32_t m_connectionStartedAt;
+    uint32_t m_nextRetryAt;
+    bool m_isConnecting;
+    bool m_wasConnected;
 };
 
 #endif // WIFI_MANAGER_H

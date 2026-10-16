@@ -8,7 +8,7 @@
 #include "Miscellaneous.h"
 #include "Secrets.h"
 
-// Template:
+// Template data from Secrets.h:
 // #define mysecret_ssid "MyWifiSSID"
 // #define mysecret_password "ICHBINSOGEHEIM"
 // #define mysecret_mqtt_server "192.168.1.1"
@@ -96,6 +96,8 @@ class Config
 
       const std::vector<RadioStation>& GetRadioStations() const { return m_tsConfig.radioStations; }
       void SetRadioStations(const std::vector<RadioStation>& stations) { m_tsConfig.radioStations = stations; saveConfig(); }
+      int GetRadioVolume() const { return m_tsConfig.radioVolume; }
+      void SetRadioVolume(int volume) { m_tsConfig.radioVolume = volume; saveConfig(); }
 
    private:
       const uint32_t uiVersionConfig{2};
@@ -125,7 +127,7 @@ class Config
        * 
        */
       
-      const char* ptr_VersionNumber{"0.90"};
+      const char* ptr_VersionNumber{"0.91"};
       const char* ptrBuildDate = {__DATE__};
       const char* ptrBuildTime = {__TIME__};
 
@@ -143,6 +145,7 @@ class Config
          double latitude;
          double longitude;
          uint32_t maxCountValueUnchanged;
+         int radioVolume;
          std::vector<RadioStation> radioStations;
       }Config_ts;
 
@@ -150,7 +153,8 @@ class Config
          .loggingActive = true,
          .latitude = mysecret_latitude,
          .longitude = mysecret_longitude,
-         .maxCountValueUnchanged = 450
+         .maxCountValueUnchanged = 450,
+         .radioVolume = 35
       };
       String m_versionstring;
       String m_strbuilddate;

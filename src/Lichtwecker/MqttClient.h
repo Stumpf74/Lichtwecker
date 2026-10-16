@@ -38,6 +38,7 @@ private:
     WiFiClient m_espClient;
     PubSubClient m_client;
     unsigned long m_nextReconnectAttempt; // Zeitstempel für den nächsten Wiederverbindungsversuch
+    unsigned long m_reconnectDelayMs;
 };
 
 #endif // MQTT_CLIENT_H

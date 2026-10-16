@@ -119,7 +119,7 @@ private:
 
    static cLigthAlarmClock *m_ptrInstance;
 
-   static const uint8_t m_ucLED_PIN = 4; // --> D4
+   static const uint8_t m_ucLED_PIN = RGB_SDA_PIN; // --> D4
    static const uint8_t m_ucNUM_LEDS = 120;
    //#define BRIGHTNESS 50
    CRGB m_leds[m_ucNUM_LEDS];

@@ -60,6 +60,7 @@ void setupWebServerRoutes(AsyncWebServer& server, AsyncEventSource& events, Asyn
          JsonObject alarmObj = alarmsArray.add<JsonObject>();
          alarmObj["enabled"] = alarm.enabled;
          alarmObj["sunriseEnabled"] = alarm.sunriseEnabled;
+         alarmObj["radioEnabled"] = alarm.radioEnabled;
          alarmObj["hour"] = alarm.hour;
          alarmObj["minute"] = alarm.minute;
          alarmObj["days"] = alarm.days;
@@ -82,11 +83,12 @@ void setupWebServerRoutes(AsyncWebServer& server, AsyncEventSource& events, Asyn
             int alarmIndex = doc["index"];
             bool enabled = doc["enabled"];
             bool sunriseEnabled = doc["sunriseEnabled"];
+            bool radioEnabled = doc["radioEnabled"] | false;
             uint8_t hour = doc["hour"];
             uint8_t minute = doc["minute"];
             uint8_t days = doc["days"];
 
-            AlarmManager::GetInstance()->setAlarm(alarmIndex, enabled, sunriseEnabled, hour, minute, days);
+            AlarmManager::GetInstance()->setAlarm(alarmIndex, enabled, sunriseEnabled, radioEnabled, hour, minute, days);
             request->send(200, "text/plain", "OK");
             return;
          }
